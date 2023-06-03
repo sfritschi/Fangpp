@@ -22,19 +22,18 @@ int main(int argc, char *argv[])
         const uint32_t pathLength = static_cast<uint32_t>(std::atoi(argv[3]));
                 
         // Compute shortest paths
-        graph.shortestPaths(source, false);
+        GraphQuery spQuery = graph.initializeQuery();
+        graph.shortestPaths(source, spQuery, false);
         
         std::cout << "Shortest distances starting from vertex " << source << '\n';
         for (uint32_t v = 0; v < nv; ++v)
-            std::cout << graph.queryMinDistance(v) << ' ';
+            std::cout << spQuery.minDistance(v) << ' ';
         std::cout << '\n';
         
-        const auto shortestPath = graph.queryMinPath(target, pathLength);
-        std::cout << "Shortest path from " << source << " to " << target 
-                  << " with max. length " << pathLength << '\n';
-        for (const auto vertex : shortestPath)
-            std::cout << vertex << ' ';
-        std::cout << '\n';
+        const auto shortestPath = spQuery.followMinPath(target, pathLength);
+        std::cout << "End pos. of shortest path from " << source << " to " << target 
+                  << " with max. length " << pathLength << ": "
+                  << shortestPath;
         
         const auto path = graph.findPathOfLength(source, target, pathLength, false);
         std::cout << "Path from " << source << " to " << target

@@ -35,7 +35,9 @@
         </node>
         <node id="n6"></node>
         <node id="n7"></node>
-        <node id="n8"></node>
+        <node id="n8">
+            <data key="d3">true</data>
+        </node>
         <node id="n9"></node>
         <node id="n10"></node>
         <node id="n11"></node>

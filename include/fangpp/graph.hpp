@@ -22,10 +22,42 @@
 struct GraphQuery {
     GraphQuery() = default;
     
-    GraphQuery(uint32_t nVertices) :
+    GraphQuery(const uint32_t nVertices) :
         distances(nVertices),
         children(nVertices),
         visited(nVertices) {}
+    
+    void reset() 
+    {
+        for (uint32_t i = 0; i < distances.size(); ++i) {
+            distances[i] = 0;
+            children[i] = 0;
+            visited[i] = 0;
+        }
+    }
+    
+    uint32_t minDistance(const uint32_t target) const
+    { 
+        assert(target < distances.size() && "invalid target location");
+        
+        return distances[target];
+    }
+    
+    uint32_t followMinPath(const uint32_t target, const uint32_t maxPathLength) const
+    {
+        assert(target < distances.size() && "invalid target location");
+        
+        const uint32_t distance = distances[target];
+        const uint32_t pathLength = std::min(distance, maxPathLength);
+        // Non-negative difference between max. length and min. distance
+        int32_t difference = static_cast<int32_t>(distance - pathLength);
+        uint32_t vertex = target;
+        // Retrace shortest path from target to vertex maxPathLength
+        // distance away from source
+        while (difference-- > 0) { vertex = children[vertex]; }
+        
+        return vertex;
+    }
     
     std::vector<uint32_t> distances;  // distance from source to each vertex
     std::vector<uint32_t> children;   // used to reconstruct path from source to target
@@ -69,13 +101,11 @@ public:
     
     GRAPH_TYPE getGraphType() const noexcept { return graphType; }
     
-    void shortestPaths(const uint32_t source, const bool isBoeg = false);
+    GraphQuery initializeQuery() const;
     
-    uint32_t queryMinDistance(const uint32_t target) const;
+    void shortestPaths(const uint32_t source, GraphQuery &spQuery,
+        const bool isBoeg = false) const;
     
-    std::vector<uint32_t> queryMinPath(const uint32_t target, 
-        const uint32_t pathMaxLength) const;
-        
     std::vector<uint32_t> findPathOfLength(const uint32_t source, 
         const uint32_t target, const uint32_t pathLength, 
         const bool isBoeg = false);
@@ -86,14 +116,6 @@ public:
     
     bool isValidPath(const std::vector<uint32_t> &path, const uint32_t source,
         const uint32_t target, const uint32_t pathLength, const bool isBoeg);
-    
-    std::span<uint32_t> getPlayerTargets(const uint32_t start, const uint32_t nTargets)
-    {
-        if (targetVertices.size() < start + nTargets) {
-            throw std::invalid_argument("Not enough targets available");
-        }
-        return std::span<uint32_t>(targetVertices.begin() + start, nTargets);
-    }
     
 private:
     void setVertexFromEntry(Vertex &vert, const std::string &name, 
@@ -110,15 +132,18 @@ private:
     
     std::pair<uint32_t,uint32_t> vertexBounds(const uint32_t v) const;
     
-    GraphQuery query;                      // used to query graph (finding paths)
-    uint32_t nVertices;                    // #vertices of graph
-    uint32_t nEdges;                       // #edges of graph
-    std::vector<Edge> edges;               // contiguous array of edges
-    std::vector<Vertex> vertices;          // contiguous array of vertices
-    std::vector<uint32_t> offsets;         // offsets to start of edge list for each vertex
-    std::vector<uint32_t> targetVertices;  // special vertices marking target locations
-    GRAPH_TYPE graphType;                  // type of graph (dir./undir.)
-    bool isValidShortestPathsQuery;        // flag to detect if query contains valid shortest paths    
+    GraphQuery query;                       // used to query graph (finding paths)
+    uint32_t nVertices;                     // #vertices of graph
+    uint32_t nEdges;                        // #edges of graph
+    std::vector<Edge> edges;                // contiguous array of edges
+    std::vector<Vertex> vertices;           // contiguous array of vertices
+    std::vector<uint32_t> offsets;          // offsets to start of edge list for each vertex
+    GRAPH_TYPE graphType;                   // type of graph (dir./undir.)
+    bool isValidShortestPathsQuery;         // flag to detect if query contains valid shortest paths
+
+protected:
+    std::vector<uint32_t> targetVertices;   // special vertices marking target locations
+    std::vector<uint32_t> stationVertices;  // regular vertices marking (non-target) stations
 };
 
 #endif /* FANGPP_GRAPH_HPP */

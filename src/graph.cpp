@@ -118,6 +118,7 @@ Graph::Graph(const char *graphFile) : isValidShortestPathsQuery(false)
     // De-allocate unnecessary capacity
     vertices.shrink_to_fit();
     targetVertices.shrink_to_fit();
+    stationVertices.shrink_to_fit();
     // Initialize graph query buffers
     query = GraphQuery(nVertices);
     
@@ -216,26 +217,36 @@ void Graph::setVertexFromEntry(Vertex &vert, const std::string &name,
         if (value == "true") {
             // Add vertex index to set of target vertices
             targetVertices.push_back(nVertices);
+        } else {
+            // Add vertex to set of (non-target) station vertices
+            stationVertices.push_back(nVertices);
         }
     } else {
         throw std::runtime_error("Unrecognized attribute name: " + name);
     }
 }
 
+// TODO: Decide if this amount of abstraction is really necessary...
+GraphQuery Graph::initializeQuery() const
+{
+    return GraphQuery(nVertices);
+}
+
 // Visits all vertices starting from source using shortest paths
 // Breadth-first search shortest path (SP) algorithm
 // Note: Distance of 0 for vertex != source indicates vertex is unreachable
-void Graph::shortestPaths(const uint32_t source, const bool isBoeg /* = false */)
+void Graph::shortestPaths(const uint32_t source, GraphQuery &spQuery,
+    const bool isBoeg /* = false */) const
 {
     if (source >= nVertices)
         throw std::invalid_argument("Invalid source vertex");
     
     // Reset query structure
-    resetQuery();
+    spQuery.reset();
         
     // Add source to current search list --> FIFO
     std::list<uint32_t> searchList(1, source);
-    query.visited[source] = 1;  // source has been visited already
+    spQuery.visited[source] = 1;  // source has been visited already
     
     while (!searchList.empty()) {
         const uint32_t v = searchList.front();
@@ -249,61 +260,19 @@ void Graph::shortestPaths(const uint32_t source, const bool isBoeg /* = false */
             // Check if this edge is accessible 
             const bool isEdgeAccessible = isBoeg || !edge.isBoegOnly;
             // Make sure that neighbor has not been visited yet
-            if (isEdgeAccessible && !query.visited[n]) {
+            if (isEdgeAccessible && !spQuery.visited[n]) {
                 // Visit neighboring vertex
-                query.visited[n] = 1;
+                spQuery.visited[n] = 1;
                 // Update distance and child vertex for v
-                query.distances[n] = query.distances[v] + 1;
+                spQuery.distances[n] = spQuery.distances[v] + 1;
                 // Note: Have to store children in REVERSE order,
-                //       otherwise last write wins.
-                query.children[n] = v;
+                //       otherwise last write wins
+                spQuery.children[n] = v;
                 // Add neighbor to search list
                 searchList.push_back(n);
             }
         }
     }
-    
-    // Validate shortest paths query
-    isValidShortestPathsQuery = true;
-}
-
-// Note: Must be called AFTER Graph::shortestPaths(...),
-//       otherwise undefined behavior.
-uint32_t Graph::queryMinDistance(const uint32_t target) const
-{
-    assert(target < nVertices && "Invalid target vertex index");
-    
-    if (!isValidShortestPathsQuery) {
-        throw std::runtime_error("Shortest paths query is no longer valid");
-    }
-    
-    return query.distances[target];
-}
-
-// Note: Must be called AFTER Graph::shortestPaths(...),
-//       otherwise undefined behavior.
-std::vector<uint32_t> Graph::queryMinPath(const uint32_t target, 
-    const uint32_t pathMaxLength) const
-{
-    assert(target < nVertices && "Invalid target vertex index");
-    
-    if (!isValidShortestPathsQuery) {
-        throw std::runtime_error("Shortest paths query is no longer valid");
-    }
-    
-    const uint32_t distance   = query.distances[target];
-    const uint32_t pathLength = std::min(pathMaxLength, distance);
-    
-    // Follow path in reverse order: "children" are actually parents in this case
-    std::vector<uint32_t> path(pathLength + 1);
-    for (uint32_t v = target, i = distance ;; v = query.children[v], --i) {
-        if (i <= pathLength)
-            path[i] = v;
-        // Last iteration
-        if (i == 0) break;
-    }
-    
-    return path;
 }
 
 bool Graph::findPathOfLengthRecursive(const uint32_t v, 
@@ -391,7 +360,7 @@ std::vector<uint32_t> Graph::findPathOfLength(const uint32_t source,
         throw std::invalid_argument("Invalid source/target vertex indexes");
         
     // Reset query structure
-    resetQuery();
+    query.reset();
     
     bool isPathFound = false;
     isPathFound = findPathOfLengthRecursive(source, target, pathLength, isBoeg);
@@ -421,22 +390,12 @@ std::unordered_set<uint32_t> Graph::findAllReachableVertices(
         throw std::invalid_argument("Invalid source vertex index");
         
     // Reset query structure
-    resetQuery();
+    query.reset();
     
     std::unordered_set<uint32_t> reachable;
     findAllReachableVerticesRecursive(source, pathLength, isBoeg, reachable);
     
     return reachable;
-}
-
-void Graph::resetQuery() {
-    for (uint32_t i = 0; i < query.distances.size(); ++i) {
-        query.distances[i] = 0;
-        query.children[i] = 0;
-        query.visited[i] = 0;
-    }
-    // invalidate this query
-    isValidShortestPathsQuery = false;
 }
 
 bool Graph::isValidPath(const std::vector<uint32_t> &path, 
@@ -448,7 +407,7 @@ bool Graph::isValidPath(const std::vector<uint32_t> &path,
     if (path.front() != source || path.back() != target) return false;
     
     // Reset query structure
-    resetQuery();
+    query.reset();
     
     for (auto u = path.begin(), v = path.begin() + 1;
             v < path.end(); ++u, ++v)

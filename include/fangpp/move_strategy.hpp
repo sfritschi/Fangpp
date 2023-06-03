@@ -36,8 +36,15 @@ public:
      *  - active player targets (player)
      *  - isControllingBoeg (player)
      *  - opponent positions (state)
+     *  - dice roll (number of eyes)
      */
-    virtual Move makeMove(Game &state, const Player &player) const = 0;
+    Move makeMove(Game &state, const Player &player) const;
+    
+    // Make move as Boeg character
+    virtual Move moveBoeg(Game &state, const Player &player, const uint32_t diceRoll) const = 0;
+    
+    // Make move as player character
+    virtual Move movePlayer(Game &state, const Player &player, const uint32_t diceRoll) const = 0;
     
     virtual ~MoveStrategy() = default;
 };
@@ -45,19 +52,22 @@ public:
 // Greedily make move towards targets without consideration of other players
 class GreedyStrategy : public MoveStrategy {
 public:
-    virtual Move makeMove(Game &state, const Player &player) const override;    
+    virtual Move moveBoeg(Game &state, const Player &player, const uint32_t diceRoll) const override;
+    virtual Move movePlayer(Game &state, const Player &player, const uint32_t diceRoll) const override;
 };
 
 // Try to avoid players, while also getting closer to own targets 
 class AvoidantStrategy : public MoveStrategy {
 public:
-    virtual Move makeMove(Game &state, const Player &player) const override;    
+    virtual Move moveBoeg(Game &state, const Player &player, const uint32_t diceRoll) const override;
+    virtual Move movePlayer(Game &state, const Player &player, const uint32_t diceRoll) const override;
 };
 
 // User decides what move to make
 class UserStrategy : public MoveStrategy {
 public:
-    virtual Move makeMove(Game &state, const Player &player) const override;
+    virtual Move moveBoeg(Game &state, const Player &player, const uint32_t diceRoll) const override;
+    virtual Move movePlayer(Game &state, const Player &player, const uint32_t diceRoll) const override;
 };
 
 #endif /* FANGPP_MOVE_STRATEGY_HPP */
