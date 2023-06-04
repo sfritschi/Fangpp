@@ -61,7 +61,7 @@ void Game::run()
     // TODO: Validate moves
     std::vector<uint32_t> path;
     while (nActivePlayers > 1) {
-        for (uint32_t i = 0; i < nPlayers; ++i) {
+        for (uint8_t i = 0; i < nPlayers; ++i) {
             // Fetch next player according to move order
             Player &player = players[moveOrder[i]];
             if (!player.isFinished()) {

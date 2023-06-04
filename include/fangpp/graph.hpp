@@ -140,7 +140,6 @@ private:
     std::vector<Vertex> vertices;           // contiguous array of vertices
     std::vector<uint32_t> offsets;          // offsets to start of edge list for each vertex
     GRAPH_TYPE graphType;                   // type of graph (dir./undir.)
-    bool isValidShortestPathsQuery;         // flag to detect if query contains valid shortest paths
 
 protected:
     std::vector<uint32_t> targetVertices;   // special vertices marking target locations

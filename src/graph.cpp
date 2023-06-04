@@ -1,6 +1,6 @@
 #include <fangpp/graph.hpp>
 
-Graph::Graph(const char *graphFile) : isValidShortestPathsQuery(false)
+Graph::Graph(const char *graphFile)
 {
     // Parse XML file containing graph data
     pugi::xml_document doc;
