@@ -5,8 +5,8 @@ Game::Game(const char *boardFile, const uint8_t _nPlayers,
         Graph(boardFile), moveOrder(_nPlayers),
             nTargetsPlayer(_nTargetsPlayer), nPlayers(_nPlayers)
 {
-    if (nPlayers == 0) {
-        throw std::invalid_argument("Non-zero number of players required");
+    if (nPlayers <= 1) {
+        throw std::invalid_argument("Require at least 2 players to play");
     }
     
     // Note: + 1 for random Boeg initial position
@@ -22,8 +22,9 @@ Game::Game(const char *boardFile, const uint8_t _nPlayers,
     
     // Seed pseudo random number generator 
     // (non-deterministically if hardware allows for it)
-    std::random_device rd;
-    prng.seed(rd());
+    //std::random_device rd;
+    //prng.seed(rd());
+    prng.seed(42);  // debug: use fixed seed
     
     players.reserve(nPlayers);
     
@@ -50,7 +51,61 @@ Game::Game(const char *boardFile, const uint8_t _nPlayers,
     std::shuffle(moveOrder.begin(), moveOrder.end(), prng);
     // Randomize starting position of Boeg to a target position NOT
     // assigned to any player
-    boegPosition = targetVertices[nPlayers * nTargetsPlayer];
+    boeg.position = targetVertices[nPlayers * nTargetsPlayer];
+    boeg.playerId = nPlayers;  // invalid id
+}
+
+void Game::run()
+{
+    uint32_t nActivePlayers = nPlayers;
+    // TODO: Validate moves
+    std::vector<uint32_t> path;
+    while (nActivePlayers > 1) {
+        for (uint32_t i = 0; i < nPlayers; ++i) {
+            // Fetch next player according to move order
+            Player &player = players[moveOrder[i]];
+            if (!player.isFinished()) {
+move_again:                 
+                path = player.makeMove(*this);
+                printMove(path);  // debug
+                
+                //const uint32_t startPosition = path.front();
+                const uint32_t endPosition = path.back();
+                
+                if (player.isBoeg(*this)) {
+                    // Update position of boeg
+                    boeg.position = endPosition;
+                    // Check if player hit active target
+                    if (player.checkVisitTarget(endPosition)) {
+                        // Decrement active player count
+                        if (player.isFinished()) { 
+                            // If at most 1 remaining player, exit 
+                            if (--nActivePlayers <= 1) { break; }
+                        }
+                    }
+                } else {
+                    // Update position of player
+                    player.setPosition(endPosition);
+                    
+                    if (endPosition == boeg.position) {
+                        // Player captured Boeg
+                        boeg.playerId = player.getId();
+                        // TODO: Replace duplicate code
+                        // Check if capture position of Boeg is active player target
+                        if (player.checkVisitTarget(endPosition)) {
+                            // Decrement active player count
+                            if (player.isFinished()) { 
+                                // If at most 1 remaining player, exit 
+                                if (--nActivePlayers <= 1) { break; }
+                            }
+                        }
+                        // Move again, now playing as Boeg
+                        goto move_again;
+                    }
+                }
+            }
+        }
+    }
 }
 
 // TODO: Maybe use std::list instead of std::vector
@@ -84,4 +139,12 @@ uint32_t Game::rollDice()
 {
     std::uniform_int_distribution<uint32_t> dist (1, 6);
     return dist(prng);
+}
+
+void Game::printMove(const std::vector<uint32_t> &move) const
+{
+    for (const auto position : move) {
+        std::cout << position << " ";
+    }
+    std::cout << '\n';
 }

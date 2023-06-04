@@ -1,8 +1,13 @@
 #include <fangpp/player.hpp>
 
-Move Player::makeMove(Game &state) const 
+std::vector<uint32_t> Player::makeMove(Game &state) const 
 {
     return moveStrategy->makeMove(state, *this);
+}
+
+bool Player::isBoeg(const Game &state) const
+{
+    return id == state.getBoegId();
 }
 
 Player::~Player()

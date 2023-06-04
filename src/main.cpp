@@ -3,6 +3,20 @@
 
 #include <fangpp/game_state.hpp>
 
+int main()
+{
+    try {
+        Game game("graphs/graph_larger.graphml", 2, 2);
+        game.run();
+    } catch (const std::exception &e) {
+        std::cerr << e.what() << '\n';
+        return EXIT_FAILURE;
+    }
+    
+    return EXIT_SUCCESS;
+}
+
+/*
 int main(int argc, char *argv[]) 
 {
     if (argc != 4) {
@@ -63,3 +77,4 @@ int main(int argc, char *argv[])
     
     return 0;    
 }
+*/

@@ -1,17 +1,17 @@
 #include <fangpp/move_strategy.hpp>
 
-Move MoveStrategy::makeMove(Game &state, const Player &player) const
+std::vector<uint32_t> MoveStrategy::makeMove(Game &state, const Player &player) const
 {    
     const uint32_t diceRoll = state.rollDice();
     
-    if (player.isControllingBoeg()) {
+    if (player.isBoeg(state)) {
         return moveBoeg(state, player, diceRoll);
     } else {
         return movePlayer(state, player, diceRoll);
     }
 }
 
-Move GreedyStrategy::moveBoeg(Game &state, const Player &player, 
+std::vector<uint32_t> GreedyStrategy::moveBoeg(Game &state, const Player &player, 
     const uint32_t diceRoll) const
 {
     const uint32_t start = state.getBoegPosition();
@@ -62,15 +62,15 @@ Move GreedyStrategy::moveBoeg(Game &state, const Player &player,
     
     if (bestTarget != unreachable) {
         // Move to reachable, unoccupied target that is closest to the remaining targets
-        return Move(start, bestTarget);
+        return startQuery.followMinPath(bestTarget, diceRoll);
     }
     // From here on, unable to reach any unoccupiedd active target
     
     if (closestTarget != unreachable) {
         // Try following 'diceRoll' many steps along shortest path to closest target
-        const uint32_t closest = startQuery.followMinPath(closestTarget, diceRoll);
-        if (!state.isOpponentAtTarget(player, closest)) {
-            return Move(start, closest);
+        const auto closest = startQuery.followMinPath(closestTarget, diceRoll);
+        if (!state.isOpponentAtTarget(player, closest.back())) {
+            return closest;
         }
         // Already occupied by opponent, keep searching...
     }
@@ -81,21 +81,21 @@ Move GreedyStrategy::moveBoeg(Game &state, const Player &player,
     const auto reachable = state.findAllReachableVertices(start, diceRoll, true);
     for (const uint32_t position : reachable) {
         // Skip already occupied positions
-        if (state.isOpponentAtTarget(player, position)) { continue; }
-        
-        minCostUpdate(position);
+        if (!state.isOpponentAtTarget(player, position)) { 
+            minCostUpdate(position);
+        }
     }
     
     if (bestTarget != unreachable) {
         // Found suitable minimizer among reachable positions
-        return Move(start, closestTarget);
+        return state.findPathOfLength(start, bestTarget, diceRoll, true);
     }
     
-    // No valid moves available. Simply stay put
-    return Move(start, start);
+    // No valid moves available. Simply stay put at start location
+    return std::vector<uint32_t>(1, start);
 }
 
-Move GreedyStrategy::movePlayer(Game &state, const Player &player,
+std::vector<uint32_t> GreedyStrategy::movePlayer(Game &state, const Player &player,
     const uint32_t diceRoll) const
 {
     const uint32_t start = player.getPosition();
@@ -106,12 +106,10 @@ Move GreedyStrategy::movePlayer(Game &state, const Player &player,
     // Move 'diceRoll' many steps along shortest path to Boeg.
     // If Boeg is reachable within 'diceRoll' steps, end is simply the
     // position of the boeg
-    const uint32_t end = startQuery.followMinPath(state.getBoegPosition(), diceRoll);
-    
-    return Move(start, end);
+    return startQuery.followMinPath(state.getBoegPosition(), diceRoll);    
 }
 
-Move AvoidantStrategy::moveBoeg(Game &state, const Player &player,
+std::vector<uint32_t> AvoidantStrategy::moveBoeg(Game &state, const Player &player,
     const uint32_t diceRoll) const
 {
     (void)state;
@@ -120,7 +118,7 @@ Move AvoidantStrategy::moveBoeg(Game &state, const Player &player,
     throw std::runtime_error("Not implemented yet...");
 }
 
-Move AvoidantStrategy::movePlayer(Game &state, const Player &player,
+std::vector<uint32_t> AvoidantStrategy::movePlayer(Game &state, const Player &player,
     const uint32_t diceRoll) const
 {
     (void)state;
@@ -129,7 +127,7 @@ Move AvoidantStrategy::movePlayer(Game &state, const Player &player,
     throw std::runtime_error("Not implemented yet...");
 }
 
-Move UserStrategy::moveBoeg(Game &state, const Player &player,
+std::vector<uint32_t> UserStrategy::moveBoeg(Game &state, const Player &player,
     const uint32_t diceRoll) const
 {
     (void)state;
@@ -138,7 +136,7 @@ Move UserStrategy::moveBoeg(Game &state, const Player &player,
     throw std::runtime_error("Not implemented yet...");
 }
 
-Move UserStrategy::movePlayer(Game &state, const Player &player,
+std::vector<uint32_t> UserStrategy::movePlayer(Game &state, const Player &player,
     const uint32_t diceRoll) const
 {
     (void)state;

@@ -43,20 +43,23 @@ struct GraphQuery {
         return distances[target];
     }
     
-    uint32_t followMinPath(const uint32_t target, const uint32_t maxPathLength) const
+    std::vector<uint32_t> followMinPath(const uint32_t target, 
+        const uint32_t maxPathLength) const
     {
         assert(target < distances.size() && "invalid target location");
         
         const uint32_t distance = distances[target];
         const uint32_t pathLength = std::min(distance, maxPathLength);
-        // Non-negative difference between max. length and min. distance
-        int32_t difference = static_cast<int32_t>(distance - pathLength);
-        uint32_t vertex = target;
-        // Retrace shortest path from target to vertex maxPathLength
-        // distance away from source
-        while (difference-- > 0) { vertex = children[vertex]; }
+        // Follow path in reverse order: "children" are actually parents in this case
+        std::vector<uint32_t> path(pathLength + 1);
+        for (uint32_t v = target, i = distance ;; v = children[v], --i) {
+            if (i <= pathLength)
+                path[i] = v;
+            // Last iteration
+            if (i == 0) break;
+        }
         
-        return vertex;
+        return path;
     }
     
     std::vector<uint32_t> distances;  // distance from source to each vertex
@@ -127,9 +130,7 @@ private:
     void findAllReachableVerticesRecursive(const uint32_t v, 
         const uint32_t pathLength, const bool isBoeg, 
         std::unordered_set<uint32_t> &reachable);
-    
-    void resetQuery();
-    
+        
     std::pair<uint32_t,uint32_t> vertexBounds(const uint32_t v) const;
     
     GraphQuery query;                       // used to query graph (finding paths)
