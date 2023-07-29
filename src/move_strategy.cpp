@@ -1,9 +1,8 @@
 #include <fangpp/move_strategy.hpp>
 
-std::vector<uint32_t> MoveStrategy::makeMove(Game &state, Player &player) const
+std::vector<uint32_t> MoveStrategy::makeMove(Game &state, Player &player, 
+    const uint32_t diceRoll) const
 {    
-    const uint32_t diceRoll = state.rollDice();
-    
     if (player.isBoeg(state)) {
         return moveBoeg(state, player, diceRoll);
     } else {

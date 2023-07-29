@@ -399,12 +399,11 @@ std::unordered_set<uint32_t> Graph::findAllReachableVertices(
 }
 
 bool Graph::isValidPath(const std::vector<uint32_t> &path, 
-    const uint32_t source, const uint32_t target, const uint32_t pathLength,
-    const bool isBoeg)
+    const uint32_t source, const bool isBoeg)
 {
-    if (path.size() != pathLength + 1) return false;      // empty
+    if (path.size() == 0) return false;  // empty path
     if (path.size() == 1) return path.front() == source;  // trivial path
-    if (path.front() != source || path.back() != target) return false;
+    if (path.front() != source) return false;
     
     // Reset query structure
     query.reset();
@@ -422,7 +421,7 @@ bool Graph::isValidPath(const std::vector<uint32_t> &path,
             const uint32_t n = e.nborId;
             
             const bool isEdgeAccessible = isBoeg || !e.isBoegOnly;
-            if (isEdgeAccessible && n == *v && !query.visited[n]) {
+            if (n == *v && !query.visited[n] && isEdgeAccessible) {
                 foundNeighbor = true;
                 break;
             }

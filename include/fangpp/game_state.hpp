@@ -23,6 +23,9 @@ public:
     
     std::vector<uint32_t> getOpponentPositions(const Player &player) const;
     
+    void validateMove(const Player &player, const std::vector<uint32_t> &path, 
+        const uint32_t diceRoll);
+    
     bool checkGameOver(Player &player, uint32_t endPosition, uint32_t &nActivePlayers) const;
     
     bool isOpponentAtTarget(const Player &player, const uint32_t target) const;

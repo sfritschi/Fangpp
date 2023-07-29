@@ -118,7 +118,7 @@ public:
         const bool isBoeg = false);
     
     bool isValidPath(const std::vector<uint32_t> &path, const uint32_t source,
-        const uint32_t target, const uint32_t pathLength, const bool isBoeg);
+        const bool isBoeg);
     
 private:
     void setVertexFromEntry(Vertex &vert, const std::string &name, 
@@ -133,7 +133,6 @@ private:
         
     std::pair<uint32_t,uint32_t> vertexBounds(const uint32_t v) const;
     
-    GraphQuery query;                       // used to query graph (finding paths)
     uint32_t nVertices;                     // #vertices of graph
     uint32_t nEdges;                        // #edges of graph
     std::vector<Edge> edges;                // contiguous array of edges
@@ -142,6 +141,7 @@ private:
     GRAPH_TYPE graphType;                   // type of graph (dir./undir.)
 
 protected:
+    GraphQuery query;                       // used to query graph (finding paths)
     std::vector<uint32_t> targetVertices;   // special vertices marking target locations
     std::vector<uint32_t> stationVertices;  // regular vertices marking (non-target) stations
 };

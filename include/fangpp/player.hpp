@@ -17,7 +17,7 @@ public:
                 moveStrategy(_moveStrategy), id(_id), startQuery(sQuery),
                     candidateQuery(cQuery) {}
     
-    std::vector<uint32_t> makeMove(Game &state);
+    std::vector<uint32_t> makeMove(Game &state, const uint32_t diceRoll);
     
     uint32_t getPosition() const { return position; }
     
@@ -39,6 +39,11 @@ public:
         // Try removing candidate position. If successful, return true
         const std::size_t nRemoved = activeTargets.erase(candidate);
         return nRemoved == 1;
+    }
+    
+    bool isActiveTarget(const uint32_t candidate) const
+    {
+        return activeTargets.contains(candidate);
     }
     
     bool operator==(const Player &other) const { return id == other.id; }

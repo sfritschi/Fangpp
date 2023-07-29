@@ -66,10 +66,11 @@ void Game::run()
             Player &player = players[moveOrder[i]];
             if (!player.isFinished()) {
 move_again:                 
-                path = player.makeMove(*this);
+                const uint32_t diceRoll = rollDice();
+                path = player.makeMove(*this, diceRoll);
                 printMove(path);  // debug
+                validateMove(player, path, diceRoll);  // debug
                 
-                //const uint32_t startPosition = path.front();
                 const uint32_t endPosition = path.back();
                 
                 if (player.isBoeg(*this)) {
@@ -97,6 +98,78 @@ move_again:
                     }
                 }
             }
+        }
+    }
+}
+
+void Game::validateMove(const Player &player, const std::vector<uint32_t> &path, 
+    const uint32_t diceRoll)
+{
+    const uint32_t nVisited = diceRoll + 1;
+    if (path.size() > nVisited)
+    {
+        throw std::runtime_error("Path is too long!");
+    } 
+    
+    // Check if path is plausible
+    const bool isBoeg = player.isBoeg(*this);
+    const uint32_t startPosition = (isBoeg) ? boeg.position : player.getPosition();
+    const uint32_t endPosition = path.back();
+    
+    if (!isValidPath(path, startPosition, isBoeg))
+    {
+        throw std::runtime_error("Path is not a valid simple path!");
+    }
+    
+    // In case player travelled less than 'diceRoll', check if
+    // this was a valid move
+    if (path.size() < nVisited)
+    {
+        if (isBoeg)
+        {
+            // Check if player had no valid moves
+            if (path.size() == 1)
+            {
+                // Check if there are any unoccupied targets within reach
+                shortestPaths(path[0], query, isBoeg);
+                for (const uint32_t target : player.getActiveTargets())
+                {
+                    if (diceRoll >= query.minDistance(target) &&
+                        !isOpponentAtTarget(player, target))
+                    {
+                        throw std::runtime_error("No player move while there is an active unoccupied target in reach!");
+                    }
+                }
+                
+                const auto reachable = findAllReachableVertices(path[0], diceRoll, isBoeg);
+                for (const uint32_t position : reachable)
+                {
+                    if (!isOpponentAtTarget(player, position))
+                    {
+                        throw std::runtime_error("No player move while there is a valid reachable position!");
+                    }
+                }
+            }
+            else if (!player.isActiveTarget(endPosition) ||
+                     isOpponentAtTarget(player, endPosition))
+            {
+                throw std::runtime_error("Path is too short for not visiting an (unoccupied) active target!");
+            }
+        }
+        else
+        {
+            // Verify that player captured the Boeg
+            if (endPosition != boeg.position)
+            {
+                throw std::runtime_error("Path is too short for not capturing the Boeg!");
+            }
+        }
+    }
+    else
+    {
+        if (isBoeg && isOpponentAtTarget(player, endPosition))
+        {
+            throw std::runtime_error("Player tried to move on occupied position as Boeg!");
         }
     }
 }

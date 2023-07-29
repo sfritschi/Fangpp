@@ -20,7 +20,7 @@ public:
      *  - opponent positions (state)
      *  - dice roll (number of eyes)
      */
-    std::vector<uint32_t> makeMove(Game &state, Player &player) const;
+    std::vector<uint32_t> makeMove(Game &state, Player &player, const uint32_t diceRoll) const;
     
     // Make move as Boeg character
     virtual std::vector<uint32_t> moveBoeg(Game &state, Player &player, const uint32_t diceRoll) const = 0;
