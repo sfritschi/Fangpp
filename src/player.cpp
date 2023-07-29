@@ -1,6 +1,6 @@
 #include <fangpp/player.hpp>
 
-std::vector<uint32_t> Player::makeMove(Game &state) const 
+std::vector<uint32_t> Player::makeMove(Game &state) 
 {
     return moveStrategy->makeMove(state, *this);
 }

@@ -19,7 +19,9 @@ Game::Game(const char *boardFile, const uint8_t _nPlayers,
     if (stationVertices.size() == 0) {
         throw std::runtime_error("Require at least 1 non-target vertex");
     }
-    
+    std::uniform_int_distribution<uint32_t> dist (
+        0, static_cast<uint32_t>(stationVertices.size() - 1)
+    );
     // Seed pseudo random number generator 
     // (non-deterministically if hardware allows for it)
     //std::random_device rd;
@@ -35,13 +37,11 @@ Game::Game(const char *boardFile, const uint8_t _nPlayers,
         const auto end   = start + nTargetsPlayer;
         
         // Generate random player position from stations
-        std::uniform_int_distribution<uint32_t> dist (
-            0, static_cast<uint32_t>(stationVertices.size() - 1)
-        );
         const uint32_t randomPlayerPos = stationVertices[dist(prng)];
         
         players.emplace_back(
-            i, randomPlayerPos, start, end, new GreedyStrategy
+            i, randomPlayerPos, start, end, new GreedyStrategy,
+            initializeQuery(), initializeQuery()
         );
         
         // Initialize player move order
@@ -75,13 +75,10 @@ move_again:
                 if (player.isBoeg(*this)) {
                     // Update position of boeg
                     boeg.position = endPosition;
-                    // Check if player hit active target
-                    if (player.checkVisitTarget(endPosition)) {
-                        // Decrement active player count
-                        if (player.isFinished()) { 
-                            // If at most 1 remaining player, exit 
-                            if (--nActivePlayers <= 1) { break; }
-                        }
+                    // Check if player hit active target as Boeg
+                    if (checkGameOver(player, endPosition, nActivePlayers))
+                    {
+                        break;
                     }
                 } else {
                     // Update position of player
@@ -90,14 +87,10 @@ move_again:
                     if (endPosition == boeg.position) {
                         // Player captured Boeg
                         boeg.playerId = player.getId();
-                        // TODO: Replace duplicate code
                         // Check if capture position of Boeg is active player target
-                        if (player.checkVisitTarget(endPosition)) {
-                            // Decrement active player count
-                            if (player.isFinished()) { 
-                                // If at most 1 remaining player, exit 
-                                if (--nActivePlayers <= 1) { break; }
-                            }
+                        if (checkGameOver(player, endPosition, nActivePlayers))
+                        {
+                            break;
                         }
                         // Move again, now playing as Boeg
                         goto move_again;
@@ -106,6 +99,19 @@ move_again:
             }
         }
     }
+}
+
+bool Game::checkGameOver(Player &player, uint32_t endPosition, 
+    uint32_t &nActivePlayers) const
+{
+    if (player.checkVisitTarget(endPosition) && player.isFinished()) 
+    {
+        // Decrement active player count.
+        // If at most 1 remaining player, game over
+        return --nActivePlayers <= 1;
+    }
+    
+    return false;
 }
 
 // TODO: Maybe use std::list instead of std::vector

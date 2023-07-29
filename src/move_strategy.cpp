@@ -1,6 +1,6 @@
 #include <fangpp/move_strategy.hpp>
 
-std::vector<uint32_t> MoveStrategy::makeMove(Game &state, const Player &player) const
+std::vector<uint32_t> MoveStrategy::makeMove(Game &state, Player &player) const
 {    
     const uint32_t diceRoll = state.rollDice();
     
@@ -11,17 +11,19 @@ std::vector<uint32_t> MoveStrategy::makeMove(Game &state, const Player &player) 
     }
 }
 
-std::vector<uint32_t> GreedyStrategy::moveBoeg(Game &state, const Player &player, 
+std::vector<uint32_t> GreedyStrategy::moveBoeg(Game &state, Player &player, 
     const uint32_t diceRoll) const
 {
+    const bool isBoeg = true;  // playing as Boeg
     const uint32_t start = state.getBoegPosition();
     const auto &targets = player.getActiveTargets();
     
-    GraphQuery startQuery = state.initializeQuery();
-    GraphQuery candidateQuery = state.initializeQuery();
+    GraphQuery &startQuery = player.getStartQuery();
+    GraphQuery &candidateQuery = player.getCandidateQuery();
     // Compute shortest paths from start as Boeg
-    state.shortestPaths(start, startQuery, true);
+    state.shortestPaths(start, startQuery, isBoeg);
     
+    // Note: Assumes maximum u32 value is never used
     const uint32_t unreachable = std::numeric_limits<uint32_t>::max();
     uint32_t minCost = unreachable;
     uint32_t bestTarget = unreachable;
@@ -32,7 +34,7 @@ std::vector<uint32_t> GreedyStrategy::moveBoeg(Game &state, const Player &player
         (const uint32_t candidate)
     {
         // Compute shortest paths starting from candidate position
-        state.shortestPaths(candidate, candidateQuery, true);
+        state.shortestPaths(candidate, candidateQuery, isBoeg);
         uint32_t cost = 0;
         for (const uint32_t target : targets) {
             // Note: Distance to self is simply 0 for candidate targets
@@ -64,7 +66,7 @@ std::vector<uint32_t> GreedyStrategy::moveBoeg(Game &state, const Player &player
         // Move to reachable, unoccupied target that is closest to the remaining targets
         return startQuery.followMinPath(bestTarget, diceRoll);
     }
-    // From here on, unable to reach any unoccupiedd active target
+    // From here on, unable to reach any unoccupied active target
     
     if (closestTarget != unreachable) {
         // Try following 'diceRoll' many steps along shortest path to closest target
@@ -76,9 +78,9 @@ std::vector<uint32_t> GreedyStrategy::moveBoeg(Game &state, const Player &player
     }
     // Iterate over all reachable & unoccupied positions to find closest
     // to all active targets
-    minCost = unreachable;  // unnecessary
-    bestTarget = unreachable;  // unnecessary
-    const auto reachable = state.findAllReachableVertices(start, diceRoll, true);
+    minCost = unreachable;
+    bestTarget = unreachable;
+    const auto reachable = state.findAllReachableVertices(start, diceRoll, isBoeg);
     for (const uint32_t position : reachable) {
         // Skip already occupied positions
         if (!state.isOpponentAtTarget(player, position)) { 
@@ -88,20 +90,20 @@ std::vector<uint32_t> GreedyStrategy::moveBoeg(Game &state, const Player &player
     
     if (bestTarget != unreachable) {
         // Found suitable minimizer among reachable positions
-        return state.findPathOfLength(start, bestTarget, diceRoll, true);
+        return state.findPathOfLength(start, bestTarget, diceRoll, isBoeg);
     }
     
     // No valid moves available. Simply stay put at start location
     return std::vector<uint32_t>(1, start);
 }
 
-std::vector<uint32_t> GreedyStrategy::movePlayer(Game &state, const Player &player,
+std::vector<uint32_t> GreedyStrategy::movePlayer(Game &state, Player &player,
     const uint32_t diceRoll) const
 {
     const uint32_t start = player.getPosition();
     // Compute shortest paths from start as regular player
-    GraphQuery startQuery = state.initializeQuery();
-    state.shortestPaths(start, startQuery, false);
+    GraphQuery &startQuery = player.getStartQuery();
+    state.shortestPaths(start, startQuery);
     
     // Move 'diceRoll' many steps along shortest path to Boeg.
     // If Boeg is reachable within 'diceRoll' steps, end is simply the
@@ -109,7 +111,7 @@ std::vector<uint32_t> GreedyStrategy::movePlayer(Game &state, const Player &play
     return startQuery.followMinPath(state.getBoegPosition(), diceRoll);    
 }
 
-std::vector<uint32_t> AvoidantStrategy::moveBoeg(Game &state, const Player &player,
+std::vector<uint32_t> AvoidantStrategy::moveBoeg(Game &state, Player &player,
     const uint32_t diceRoll) const
 {
     (void)state;
@@ -118,7 +120,7 @@ std::vector<uint32_t> AvoidantStrategy::moveBoeg(Game &state, const Player &play
     throw std::runtime_error("Not implemented yet...");
 }
 
-std::vector<uint32_t> AvoidantStrategy::movePlayer(Game &state, const Player &player,
+std::vector<uint32_t> AvoidantStrategy::movePlayer(Game &state, Player &player,
     const uint32_t diceRoll) const
 {
     (void)state;
@@ -127,7 +129,7 @@ std::vector<uint32_t> AvoidantStrategy::movePlayer(Game &state, const Player &pl
     throw std::runtime_error("Not implemented yet...");
 }
 
-std::vector<uint32_t> UserStrategy::moveBoeg(Game &state, const Player &player,
+std::vector<uint32_t> UserStrategy::moveBoeg(Game &state, Player &player,
     const uint32_t diceRoll) const
 {
     (void)state;
@@ -136,7 +138,7 @@ std::vector<uint32_t> UserStrategy::moveBoeg(Game &state, const Player &player,
     throw std::runtime_error("Not implemented yet...");
 }
 
-std::vector<uint32_t> UserStrategy::movePlayer(Game &state, const Player &player,
+std::vector<uint32_t> UserStrategy::movePlayer(Game &state, Player &player,
     const uint32_t diceRoll) const
 {
     (void)state;

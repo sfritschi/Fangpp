@@ -6,7 +6,7 @@
 int main()
 {
     try {
-        Game game("graphs/graph_larger.graphml", 2, 2);
+        Game game("graphs/graph_fang.graphml", 4, 4);
         game.run();
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';
