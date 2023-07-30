@@ -3,11 +3,11 @@
 
 #include <fangpp/game_state.hpp>
 
-int main()
+int main(void)
 {
     try {
         Game game("graphs/graph_fang.graphml", 4, 4);
-        game.run();
+        while (game.nextMove() != Game::GAME_OVER) {}
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';
         return EXIT_FAILURE;

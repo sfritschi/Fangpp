@@ -53,13 +53,15 @@ Game::Game(const char *boardFile, const uint8_t _nPlayers,
     // assigned to any player
     boeg.position = targetVertices[nPlayers * nTargetsPlayer];
     boeg.playerId = nPlayers;  // invalid id
+    // Reset index of first to move
+    moveIndex = 0;
+    nActivePlayers = nPlayers;
 }
 
 void Game::run()
 {
-    uint32_t nActivePlayers = nPlayers;
-    // TODO: Validate moves
     std::vector<uint32_t> path;
+    
     while (nActivePlayers > 1) {
         for (uint8_t i = 0; i < nPlayers; ++i) {
             // Fetch next player according to move order
@@ -77,7 +79,7 @@ move_again:
                     // Update position of boeg
                     boeg.position = endPosition;
                     // Check if player hit active target as Boeg
-                    if (checkGameOver(player, endPosition, nActivePlayers))
+                    if (checkGameOver(player, endPosition))
                     {
                         break;
                     }
@@ -89,7 +91,7 @@ move_again:
                         // Player captured Boeg
                         boeg.playerId = player.getId();
                         // Check if capture position of Boeg is active player target
-                        if (checkGameOver(player, endPosition, nActivePlayers))
+                        if (checkGameOver(player, endPosition))
                         {
                             break;
                         }
@@ -102,11 +104,62 @@ move_again:
     }
 }
 
+Game::Status Game::nextMove()
+{
+    Status status = CONTINUE;
+    
+    // Fetch next player according to move order
+    Player &player = players[moveOrder[moveIndex]];
+    if (!player.isFinished())
+    {
+        const uint32_t diceRoll = rollDice();
+        const std::vector<uint32_t> path = player.makeMove(*this, diceRoll);
+        printMove(path);  // debug
+        validateMove(player, path, diceRoll);  // debug
+        
+        const uint32_t endPosition = path.back();
+        
+        if (player.isBoeg(*this)) {
+            // Update position of boeg
+            boeg.position = endPosition;
+            // Check if player hit active target as Boeg
+            if (checkGameOver(player, endPosition))
+            {
+                return GAME_OVER;
+            }
+        } else {
+            // Update position of player
+            player.setPosition(endPosition);
+            
+            if (endPosition == boeg.position) {
+                // Player captured Boeg
+                boeg.playerId = player.getId();
+                // Check if capture position of Boeg is active player target
+                if (checkGameOver(player, endPosition))
+                {
+                    return GAME_OVER;
+                }
+                // Move again, now playing as Boeg
+                status = CAPTURE;
+            }
+        }
+    }
+    
+    // If player captured the Boeg this move, they get to move again immediately
+    if (status != CAPTURE)
+    {
+        // Increment index and wrap around
+        moveIndex = (moveIndex + 1) % nPlayers;
+    }
+    
+    return status;
+}
+
 void Game::validateMove(const Player &player, const std::vector<uint32_t> &path, 
     const uint32_t diceRoll)
 {
-    const uint32_t nVisited = diceRoll + 1;
-    if (path.size() > nVisited)
+    const uint32_t maxPathLength = diceRoll + 1;
+    if (path.size() > maxPathLength)
     {
         throw std::runtime_error("Path is too long!");
     } 
@@ -123,7 +176,7 @@ void Game::validateMove(const Player &player, const std::vector<uint32_t> &path,
     
     // In case player travelled less than 'diceRoll', check if
     // this was a valid move
-    if (path.size() < nVisited)
+    if (path.size() < maxPathLength)
     {
         if (isBoeg)
         {
@@ -174,11 +227,14 @@ void Game::validateMove(const Player &player, const std::vector<uint32_t> &path,
     }
 }
 
-bool Game::checkGameOver(Player &player, uint32_t endPosition, 
-    uint32_t &nActivePlayers) const
+bool Game::checkGameOver(Player &player, uint32_t endPosition)
 {
+    assert(player.isBoeg(*this) && "expected player to be playing as Boeg");
+    
     if (player.checkVisitTarget(endPosition) && player.isFinished()) 
     {
+        // Reset id of player playing Boeg
+        boeg.playerId = nPlayers;
         // Decrement active player count.
         // If at most 1 remaining player, game over
         return --nActivePlayers <= 1;
