@@ -146,8 +146,7 @@ Game::Status Game::nextMove()
     }
     
     // If player captured the Boeg this move, they get to move again immediately
-    if (status != CAPTURE)
-    {
+    if (status != CAPTURE) {
         // Increment index and wrap around
         moveIndex = (moveIndex + 1) % nPlayers;
     }
