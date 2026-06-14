@@ -1,5 +1,6 @@
 CXX=clang++
-CXXFLAGS=-Wall -Wextra -Wpedantic -std=c++20 -pthread -ggdb3
+#CXXFLAGS=-Wall -Wextra -Wpedantic -std=c++20 -pthread -O3
+CXXFLAGS=-Wall -Wextra -Wpedantic -std=c++20 -pthread -ggdb3 -O0
 PUGI_CXXFLAGS=-Wall -Wextra -pedantic -std=c++20 -O3
 
 LIBFLAGS=-lfmod -lOpenGL -lGLEW -lglfw

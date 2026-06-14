@@ -48,9 +48,10 @@ GLFWwindow *Graphics::initGL()
 }
 
 Graphics::Graphics() : 
-    window(initGL()), 
-    circles(), 
-    lines(), 
+    window(initGL()),
+    gameState("graphs/graph_fang.graphml", 4, 4),
+    circles(gameState.getVertices()), 
+    lines(gameState.getLinesFromEdges()), 
     text("fonts/LiberationMono-Regular.ttf")
 {
     // Initialize VAOs and associated VBOs, as well as shader program
@@ -60,6 +61,8 @@ Graphics::Graphics() :
 void Graphics::run()
 {
     sound.play(Sound::MAIN_THEME);  // start playing main theme on loop
+    
+    glfwSetTime(0.0);  // start timer
     
     while (!glfwWindowShouldClose(window))
     {
@@ -84,12 +87,51 @@ void Graphics::run()
         // Draw lines associated with edges
         lines.draw();
         // Draw circles representing nodes
+        // Note: Need to animate the colors of players at same position
+        circles.animateColors(glfwGetTime(), gameState.prepareCharacterPositions());
         circles.draw();
-        text.drawAtCentered(L"Hellö", 0.25f*width, 0.25f*height, glm::vec3(0.0f, 0.0f, 0.0f), Text::CENTER_BOTH, aspect, 0.5);
-        text.drawAtCentered(L"2", -0.25f*width, 0.25f*height, glm::vec3(0.0f, 0.0f, 0.0f), Text::CENTER_BOTH, aspect);
-        text.drawAtCentered(L"3", -0.25f*width, -0.25f*height, glm::vec3(0.0f, 0.0f, 0.0f), Text::CENTER_BOTH, aspect);
-        text.drawAtCentered(L"4", 0.25f*width, -0.25f*height, glm::vec3(0.0f, 0.0f, 0.0f), Text::CENTER_BOTH, aspect);
-        text.drawAtCentered(L"This-is-a-test", -0.5f*width, 0.0f, glm::vec3(0.0f, 0.0f, 0.0f), Text::CENTER_VERTICAL);
+        //text.drawAtCentered(L"Hellö", 0.25f*width, 0.25f*height, glm::vec3(0.0f, 0.0f, 0.0f), Text::CENTER_BOTH, aspect, 0.5);
+        //text.drawAtCentered(L"2", -0.25f*width, 0.25f*height, glm::vec3(0.0f, 0.0f, 0.0f), Text::CENTER_BOTH, aspect);
+        //text.drawAtCentered(L"3", -0.25f*width, -0.25f*height, glm::vec3(0.0f, 0.0f, 0.0f), Text::CENTER_BOTH, aspect);
+        //text.drawAtCentered(L"4", 0.25f*width, -0.25f*height, glm::vec3(0.0f, 0.0f, 0.0f), Text::CENTER_BOTH, aspect);
+        //text.drawAtCentered(L"This-is-a-test", -0.5f*width, 0.0f, glm::vec3(0.0f, 0.0f, 0.0f), Text::CENTER_VERTICAL);
+        
+        
+        const auto &userPlayer = gameState.getUserPlayer();
+        const auto playerId = gameState.getCurrentPlayer().getId();
+        
+        if (userPlayer.getId() == playerId)
+        {
+            const std::wstring diceRollMsg1 = L"You rolled a " + std::to_wstring(gameState.getDiceRoll());
+            text.drawAt(diceRollMsg1, -0.5f*width, 0.5f*height - 40.0f, playerColors[playerId], aspect);
+        }
+        else
+        {
+            const std::wstring diceRollMsg1 = L"Player " + std::to_wstring(playerId + 1) + L" rolled a " + std::to_wstring(gameState.getDiceRoll());
+            text.drawAt(diceRollMsg1, -0.5f*width, 0.5f*height - 40.0f, playerColors[playerId], aspect);
+        }
+        
+        // Draw name of the location where the user is currently
+        const uint32_t vertexId = gameState.getUserPlayer().getPosition();
+        const auto &vertex = gameState.getVertices()[vertexId];
+        const std::wstring userPositionMsg(vertex.location.begin(), vertex.location.end());
+        
+        const auto userDim = text.getDimensions(userPositionMsg);
+        text.drawAt(userPositionMsg, -0.5f*width, -0.5f*height + userDim.height, glm::vec3(0.0f), aspect);
+        
+        //for (const auto &vertex : gameState.getVertices())
+        //{
+        //    const std::string &loc = vertex.location;
+        //    const std::wstring wloc (loc.begin(), loc.end());
+        //    text.drawAtCentered(wloc, vertex.xpos*width*0.5f, vertex.ypos*height*0.5f, glm::vec3(0.0f, 0.0f, 1.0f), Text::CENTER_BOTH, aspect, 0.4);
+        //}
+        
+        // Draw active targets of user player
+        for (const auto target : userPlayer.getActiveTargets())
+        {
+            const auto &vertex = gameState.getVertices()[target];
+            text.drawAtCentered(L"*", vertex.xpos*width*0.5f, vertex.ypos*height*0.5f, playerColors[userPlayer.getId()], Text::CENTER_BOTH, aspect);
+        }
         
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -124,30 +166,68 @@ void Graphics::mouseButtonCallback(GLFWwindow *window, int button, int action, i
 {
     (void)mods;  // unused
     
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    auto graphics = reinterpret_cast<Graphics *>(glfwGetWindowUserPointer(window));
+    if (graphics)
     {
-        // Left mouse button was pressed
-        // Compute device coordinates from cursor pos
-        GLdouble xpos = 0.0, ypos = 0.0;
-        glfwGetCursorPos(window, &xpos, &ypos);
+        const bool isUsersTurn = graphics->gameState.checkIfUserTurn();
         
-        GLint width = 0, height = 0;
-        glfwGetFramebufferSize(window, &width, &height);        
-        // Map from screen coordinates to device coordinates
-        xpos = 2.0 * xpos / width - 1.0;
-        ypos = 1.0 - 2.0 * ypos / height;  // flip y-axis
-        // Inverse orthographic projection (multiply by aspect ratio)
-        xpos *= static_cast<GLdouble>(width) / height;
-        
-        // TODO: Check all circle offset positions individually
-        const GLdouble cx = 0.5, cy = 0.5;  // top right (blue) circle
-        const GLdouble dx = xpos - cx;
-        const GLdouble dy = ypos - cy;
-        
-        if (dx*dx + dy*dy <= 0.25*0.25)
+        if (isUsersTurn)
         {
-            auto graphics = reinterpret_cast<Graphics *>(glfwGetWindowUserPointer(window));
-            graphics->sound.play(Sound::CLICK_SFX);
+            if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+            {
+                // Left mouse button was pressed
+                // Compute device coordinates from cursor pos
+                GLdouble xpos = 0.0, ypos = 0.0;
+                glfwGetCursorPos(window, &xpos, &ypos);
+                
+                GLint width = 0, height = 0;
+                glfwGetFramebufferSize(window, &width, &height);        
+                // Map from screen coordinates to device coordinates
+                // TODO: Replace this with inline function
+                xpos = 2.0 * xpos / width - 1.0;
+                ypos = 1.0 - 2.0 * ypos / height;  // flip y-axis
+                // Inverse orthographic projection (multiply by aspect ratio)
+                xpos *= static_cast<GLdouble>(width) / height;
+                        
+                const GLdouble radius = graphics->circles.radius;
+                
+                // Check all vertices for potential collision with mouse click position
+                const auto &vertices = graphics->gameState.getVertices();
+                for (uint32_t i = 0; i < vertices.size(); ++i)
+                {
+                    const GLdouble dx = xpos - vertices[i].xpos;
+                    const GLdouble dy = ypos - vertices[i].ypos;
+                
+                    if (dx*dx + dy*dy <= radius*radius)
+                    {
+                        graphics->sound.play(Sound::CLICK_SFX);
+                        // Set clicked vertex (circle) index needed for user strategy
+                        graphics->gameState.setUserClickedPosition(i);
+                        // TODO: Move logic of rolling dice to Game::nextMove()
+                        // Don't re-roll the dice if the user made an invalid move
+                        const auto status = graphics->gameState.nextMove();
+                        if (status != Game::TRY_AGAIN)
+                        {
+                            graphics->gameState.rollDice();
+                        }
+                        
+                        break;  // circles must NOT overlap; stopping
+                    }
+                }
+            }
+        }
+        else
+        {
+            if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+            {
+                // Advance state of game
+                const Game::Status status = graphics->gameState.nextMove();
+                if (status == Game::GAME_OVER)
+                {
+                    // TODO: Reset game
+                }
+                graphics->gameState.rollDice();
+            }
         }
     }
 }

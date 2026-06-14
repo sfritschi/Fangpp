@@ -4,6 +4,8 @@
 #include <fangpp/game_state.hpp>
 #include <fangpp/player.hpp>
 
+#include <limits>
+
 // Forward-declarations
 class Game;
 class Player;
@@ -19,6 +21,7 @@ public:
      *  - isControllingBoeg (player)
      *  - opponent positions (state)
      *  - dice roll (number of eyes)
+     *  - vertex on the board clicked by user using mouse (only for UserStrategy)
      */
     std::vector<uint32_t> makeMove(Game &state, Player &player, const uint32_t diceRoll) const;
     
@@ -27,6 +30,10 @@ public:
     
     // Make move as player character
     virtual std::vector<uint32_t> movePlayer(Game &state, Player &player, const uint32_t diceRoll) const = 0;
+    
+    virtual bool isUserStrategy() const { return false; }
+    
+    virtual void setUserClickedPosition(const uint32_t) {}
     
     virtual ~MoveStrategy() = default;
 };
@@ -50,6 +57,13 @@ class UserStrategy : public MoveStrategy {
 public:
     virtual std::vector<uint32_t> moveBoeg(Game &state, Player &player, const uint32_t diceRoll) const override;
     virtual std::vector<uint32_t> movePlayer(Game &state, Player &player, const uint32_t diceRoll) const override;
+    
+    virtual bool isUserStrategy() const override { return true; };
+    
+    virtual void setUserClickedPosition(const uint32_t pos) override { m_userClickedPosition = pos; }
+
+private:
+    uint32_t m_userClickedPosition = std::numeric_limits<uint32_t>::max();  // invalid
 };
 
 #endif /* FANGPP_MOVE_STRATEGY_HPP */

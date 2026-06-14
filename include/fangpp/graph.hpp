@@ -18,6 +18,7 @@
 #include <algorithm>
 
 #include "pugixml.hpp"  // Parsing .graphml files
+#include "gl_common.hpp"
 
 struct GraphQuery {
     GraphQuery() = default;
@@ -86,6 +87,13 @@ struct Vertex {
     std::string location;  // name of location represented by vertex
     float xpos;            // screen x-position of vertex
     float ypos;            // screen y-position of vertex
+    uint8_t isTarget;
+};
+
+struct LineVertex
+{
+    glm::vec2 pos;
+    glm::vec3 col;
 };
 
 class Graph {
@@ -119,6 +127,10 @@ public:
     
     bool isValidPath(const std::vector<uint32_t> &path, const uint32_t source,
         const bool isBoeg);
+        
+    const std::vector<Vertex> &getVertices() const { return vertices; };
+        
+    std::vector<LineVertex> getLinesFromEdges() const;
     
 private:
     void setVertexFromEntry(Vertex &vert, const std::string &name, 

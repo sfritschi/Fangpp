@@ -81,7 +81,7 @@ private:
     GLuint shaderProgram = 0;
     std::vector<FontChar> fontChars;
     std::array<Vertex, 4> vertices;  // quad to draw texture to
-    std::array<GLubyte, 6> indices;  // index buffer for quad
+    const std::array<GLubyte, 6> indices = {1, 2, 3, 1, 3, 0};  // index buffer for quad
 };
 
 #endif /* TEXT_HPP */

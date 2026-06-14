@@ -199,7 +199,7 @@ Graph::Graph(const char *graphFile)
         uint8_t isBoegOnly;
         std::tie(sourceIndex, targetIndex, isBoegOnly) = edge;
         // Store index of target vertex in bucket of source vertex
-        const uint32_t edgeIndex = offsets[sourceIndex] + counts[sourceIndex]++;
+        const uint32_t edgeIndex = offsets[sourceIndex] + (counts[sourceIndex]++);
         edges[edgeIndex] = Edge(targetIndex, isBoegOnly);
     }
 }
@@ -207,21 +207,35 @@ Graph::Graph(const char *graphFile)
 void Graph::setVertexFromEntry(Vertex &vert, const std::string &name, 
     const std::string &value)
 {
-    if (name == "location") {
+    if (name == "location") 
+    {
         vert.location = value;
-    } else if (name == "xpos") {
+    } 
+    else if (name == "xpos")
+    {
         vert.xpos = std::stof(value);
-    } else if (name == "ypos") {
+    }
+    else if (name == "ypos")
+    {
         vert.ypos = std::stof(value);
-    } else if (name == "targetLocation") {
-        if (value == "true") {
+    }
+    else if (name == "targetLocation")
+    {
+        vert.isTarget = value == "true";
+        
+        if (vert.isTarget)
+        {
             // Add vertex index to set of target vertices
             targetVertices.push_back(nVertices);
-        } else {
+        } 
+        else
+        {
             // Add vertex to set of (non-target) station vertices
             stationVertices.push_back(nVertices);
         }
-    } else {
+    } 
+    else
+    {
         throw std::runtime_error("Unrecognized attribute name: " + name);
     }
 }
@@ -366,11 +380,12 @@ std::vector<uint32_t> Graph::findPathOfLength(const uint32_t source,
     isPathFound = findPathOfLengthRecursive(source, target, pathLength, isBoeg);
     
     if (!isPathFound) {
-        throw std::runtime_error(
-            "Failed to find path from " + std::to_string(source) + 
-            " to " + std::to_string(target) + 
-            " of length " + std::to_string(pathLength)
-        );
+        //throw std::runtime_error(
+        //    "Failed to find path from " + std::to_string(source) + 
+        //    " to " + std::to_string(target) + 
+        //    " of length " + std::to_string(pathLength)
+        //);
+        return {};  // invalid (empty) path
     }
     
     // Prepare final output
@@ -438,4 +453,47 @@ std::pair<uint32_t,uint32_t> Graph::vertexBounds(const uint32_t v) const
     assert(v < nVertices && "Invalid vertex index");
     
     return std::pair(offsets[v], offsets[v + 1]);
+}
+
+std::vector<LineVertex> Graph::getLinesFromEdges() const
+{
+    std::vector<LineVertex> lines;
+    if (graphType == GRAPH_DIRECTED)
+    {
+        lines.reserve(2 * edges.size());  // 2 Line vertices per edge
+    }
+    else  // graphType == GRAPH_UNDIRECTED
+    {
+        lines.reserve(edges.size());  // every edge is already counted twice
+    }
+    
+    for (uint32_t vertexId = 0; vertexId < vertices.size(); ++vertexId)
+    {
+        const auto [start, end] = vertexBounds(vertexId);
+        for (uint32_t i = start; i < end; ++i)
+        {
+            const Edge edge = edges[i];
+            
+            if (graphType == GRAPH_UNDIRECTED && vertexId > edge.nborId)
+            {
+                continue;  // already added this edge in opposite direction
+            }
+            
+            const auto &startVertex = vertices[vertexId];
+            const auto &endVertex = vertices[edge.nborId];
+            
+            if (edge.isBoegOnly)  // "boeg" edges are white
+            {
+                lines.push_back({{startVertex.xpos, startVertex.ypos}, {0.9f, 0.9f, 0.9f}});
+                lines.push_back({{endVertex.xpos, endVertex.ypos}, {0.9f, 0.9f, 0.9f}});
+            }
+            else  // regular edges are black
+            {
+                lines.push_back({{startVertex.xpos, startVertex.ypos}, {0.0f, 0.0f, 0.0f}});
+                lines.push_back({{endVertex.xpos, endVertex.ypos}, {0.0f, 0.0f, 0.0f}});
+            }
+        }
+    }
+    
+    return lines;
 }

@@ -54,8 +54,8 @@ Text::Text(const char *fontPath)
                 // Initialize index buffer data
                 CHKERRGL(glBufferData(GL_ELEMENT_ARRAY_BUFFER,
                                       indices.size() * sizeof(indices[0]),
-                                      nullptr,  // no data available yet
-                                      GL_DYNAMIC_DRAW
+                                      indices.data(),
+                                      GL_STATIC_DRAW
                 ));
                 
             }
@@ -209,7 +209,6 @@ void Text::drawAt(const std::wstring &text, GLfloat x, GLfloat y,
                 vertices[1] = {{xp,     yp    }, {0.0f, 1.0f}};  // 1: bottom-left
                 vertices[2] = {{xp + w, yp    }, {1.0f, 1.0f}};  // 2: bottom-right
                 vertices[3] = {{xp + w, yp + h}, {1.0f, 0.0f}};  // 3: top-right
-                indices = {1, 2, 3, 1, 3, 0};
                 
                 // Render glyph texture over quad
                 CHKERRGL(glBindTexture(GL_TEXTURE_2D, tdata.textureId));
@@ -226,11 +225,11 @@ void Text::drawAt(const std::wstring &text, GLfloat x, GLfloat y,
                 
                 CHKERRGL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vboFontIndex));
                 {
-                    CHKERRGL(glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 
-                                             0, 
-                                             indices.size() * sizeof(indices[0]),
-                                             indices.data()
-                    ));
+                    //CHKERRGL(glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 
+                    //                         0, 
+                    //                         indices.size() * sizeof(indices[0]),
+                    //                         indices.data()
+                    //));
                     
                     // Issue draw command while index buffer is still bound
                     CHKERRGL(glDrawElements(GL_TRIANGLES, 

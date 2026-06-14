@@ -5,14 +5,17 @@
 #include <fangpp/game_state.hpp>
 #include <fangpp/graph.hpp>
 
+#include <memory>
+
 class Game;
 class MoveStrategy;
 
 class Player {
-public:    
-    template <class InputIt>
-    Player(uint8_t _id, uint32_t _position, InputIt first, InputIt last, 
-        const MoveStrategy *_moveStrategy, GraphQuery sQuery, GraphQuery cQuery) :
+public:
+    using const_iterator_t = std::vector<uint32_t>::const_iterator;
+    
+    Player(uint8_t _id, uint32_t _position, const_iterator_t first, const_iterator_t last, 
+        MoveStrategy *_moveStrategy, GraphQuery sQuery, GraphQuery cQuery) :
             position(_position), activeTargets(first, last), 
                 moveStrategy(_moveStrategy), id(_id), startQuery(sQuery),
                     candidateQuery(cQuery) {}
@@ -46,16 +49,23 @@ public:
         return activeTargets.contains(candidate);
     }
     
+    // Returns true if this player is controlled by the user of this program
+    bool isPlayerUser() const;
+    
+    void setPlayerClickedPosition(const uint32_t pos);
+    
     bool operator==(const Player &other) const { return id == other.id; }
     
     bool operator!=(const Player &other) const { return id != other.id; }
-    
+        
     ~Player();
+    
+    static const constexpr uint32_t maxPlayableCharacters = 7;  // 6 players + 1 for boeg
     
 private:   
     uint32_t position;  // current position (vertex index) of player
     std::unordered_set<uint32_t> activeTargets;  // set of player targets left to visit
-    const MoveStrategy *moveStrategy;  // move-making strategy of player (owned)
+    MoveStrategy *moveStrategy;  // move-making strategy of player (owned)
     const uint8_t id;  // unique number identifying this player
     GraphQuery startQuery;  // Used to query shortest distances from starting position
     GraphQuery candidateQuery;  // Used to query shortest distances from candidate position

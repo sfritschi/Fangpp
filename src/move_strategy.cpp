@@ -131,17 +131,80 @@ std::vector<uint32_t> AvoidantStrategy::movePlayer(Game &state, Player &player,
 std::vector<uint32_t> UserStrategy::moveBoeg(Game &state, Player &player,
     const uint32_t diceRoll) const
 {
-    (void)state;
-    (void)player;
-    (void)diceRoll;
-    throw std::runtime_error("Not implemented yet...");
+    const uint32_t start = state.getBoegPosition();
+    
+    bool hasReachablePosition = false;
+    // Need to first verify if user has any valid moves to begin with
+    const auto reachable = state.findAllReachableVertices(start, diceRoll, true);
+    for (const uint32_t position : reachable) 
+    {
+        // Skip already occupied positions
+        if (!state.isOpponentAtTarget(player, position)) 
+        { 
+            hasReachablePosition = true;
+            break;  // found at least 1 reachable & valid position
+        }
+    }
+    
+    if (!hasReachablePosition)
+    {
+        // Only valid move by user is to stay put at same position in this case
+        return std::vector<uint32_t>(1, start);
+    }
+    // Boeg is not allowed to move to already occupied position
+    if (state.isOpponentAtTarget(player, m_userClickedPosition))
+    {
+        return {};  // invalid (empty) path
+    }
+    // In case user (playing as boeg) visited one of their active targets,
+    // try to return a shortest path ending at that target position
+    const auto &targets = player.getActiveTargets();
+    for (const uint32_t target : targets)
+    {
+        if (m_userClickedPosition == target)
+        {
+            // Compute shortest paths from boeg position
+            GraphQuery &startQuery = player.getStartQuery();
+            state.shortestPaths(start, startQuery, true);
+        
+            if (diceRoll >= startQuery.minDistance(m_userClickedPosition))
+            {
+                return startQuery.followMinPath(m_userClickedPosition, diceRoll);
+            }
+            else
+            {
+                return {};  // invalid (empty) path
+            }
+        }
+    }
+    
+    // Return a valid simple path ending at clicked position if one exists
+    return state.findPathOfLength(state.getBoegPosition(), m_userClickedPosition, diceRoll, true);
 }
 
 std::vector<uint32_t> UserStrategy::movePlayer(Game &state, Player &player,
     const uint32_t diceRoll) const
 {
-    (void)state;
-    (void)player;
-    (void)diceRoll;
-    throw std::runtime_error("Not implemented yet...");
+    // If user clicked boeg position, check if it is reachable and return
+    // a shortest path to that position in that case
+    if (m_userClickedPosition == state.getBoegPosition())
+    {
+        // Compute shortest paths from start as regular player
+        GraphQuery &startQuery = player.getStartQuery();
+        state.shortestPaths(player.getPosition(), startQuery);
+        
+        if (diceRoll >= startQuery.minDistance(m_userClickedPosition))
+        {
+            return startQuery.followMinPath(m_userClickedPosition, diceRoll);
+        }
+        else
+        {
+            return {};  // invalid (empty) path
+        }
+    }
+    else
+    {
+        // Return a valid simple path ending at clicked position if one exists
+        return state.findPathOfLength(player.getPosition(), m_userClickedPosition, diceRoll, false);        
+    }
 }

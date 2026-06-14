@@ -28,8 +28,6 @@ do                                                                     \
 }                                                                      \
 while (0)
 
-// Initialize GLFW window, GLEW and global OpenGL settings
-void initGL();
 // Create shader from type and shader code file path
 GLuint createGLShader(const GLenum shaderType, const char *filename);
 // Create shader program from file paths of vertex and fragment shader code

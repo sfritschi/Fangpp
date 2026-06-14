@@ -4,7 +4,7 @@
 
 #include <fangpp/circles.hpp>
 
-Circles::Circles()
+Circles::Circles(const std::vector<Vertex> &vertices) : nInstances(vertices.size())
 {
     shaderProgram = createGLShaderProgram("shaders/circles/shader.vert",
                                           "shaders/circles/shader.frag");
@@ -13,7 +13,7 @@ Circles::Circles()
     
     std::array<glm::vec2, nTrianglesCircle + 2> circleVertices;
     // Set center of circle
-    circleVertices[0] = glm::vec2(0.0f, 0.0f);
+    circleVertices[0] = glm::vec2(0.0f);
     for (GLuint i = 0; i <= nTrianglesCircle; ++i)
     {
         // Compute position on circle perimeter
@@ -23,17 +23,20 @@ Circles::Circles()
         );
     }
     
-    std::array<glm::vec2, nInstances> instancePositions;
-    instancePositions[0] = {-0.5f, -0.5f};
-    instancePositions[1] = {0.5f, -0.5f};
-    instancePositions[2] = {0.5f, 0.5f};
-    instancePositions[3] = {-0.5f, 0.5f};
-    
-    std::array<glm::vec3, nInstances> instanceColors;
-    instanceColors[0] = {1.0f, 0.0f, 0.0f};
-    instanceColors[1] = {0.0f, 1.0f, 0.0f};
-    instanceColors[2] = {0.0f, 0.0f, 1.0f};
-    instanceColors[3] = {1.0f, 1.0f, 0.0f};
+    // Define static circle colors: Black for station vertices and
+    // magenta for target vertices
+    std::vector<glm::vec3> instanceColors(vertices.size());
+    for (uint32_t i = 0; i < vertices.size(); ++i)
+    {
+        if (vertices[i].isTarget)
+        {
+            instanceColors[i] = glm::vec3(1.f, 92.f/255.f, 244.f/255.f);  // pink
+        }
+        else
+        {
+            instanceColors[i] = glm::vec3(0.0f);  // black
+        }
+    }
     
     CHKERRGL(glUseProgram(shaderProgram));
     {
@@ -65,16 +68,16 @@ Circles::Circles()
             CHKERRGL(glBindBuffer(GL_ARRAY_BUFFER, vboCirclesInstancePos));
             {
                 CHKERRGL(glBufferData(GL_ARRAY_BUFFER,
-                                      instancePositions.size() * sizeof(instancePositions[0]),
-                                      instancePositions.data(),
+                                      vertices.size() * sizeof(vertices[0]),
+                                      vertices.data(),
                                       GL_STATIC_DRAW
                 ));
                 CHKERRGL(glVertexAttribPointer(1, // location in shader
                                                2, // #elements of attribute
                                                GL_FLOAT, // type of attribute
                                                GL_FALSE, // normalize?
-                                               sizeof(instancePositions[0]),  // stride
-                                               nullptr)  // offset
+                                               sizeof(Vertex),  // stride
+                                               (const void *)offsetof(Vertex, xpos))  // offset
                 ); 
                 CHKERRGL(glEnableVertexAttribArray(1));
                 CHKERRGL(glVertexAttribDivisor(1, 1));  // location, instance increment
@@ -84,11 +87,10 @@ Circles::Circles()
             CHKERRGL(glGenBuffers(1, &vboCirclesInstanceColor));
             CHKERRGL(glBindBuffer(GL_ARRAY_BUFFER, vboCirclesInstanceColor));
             {
-                // Note: Instance color buffer is used for dynamic drawing
                 CHKERRGL(glBufferData(GL_ARRAY_BUFFER,
                                       instanceColors.size() * sizeof(instanceColors[0]),
                                       instanceColors.data(),
-                                      GL_DYNAMIC_DRAW
+                                      GL_STATIC_DRAW
                 ));
                 CHKERRGL(glVertexAttribPointer(2, // location in shader
                                                3, // #elements of attribute
@@ -115,7 +117,6 @@ void Circles::draw() const
         CHKERRGL(glBindVertexArray(vaoCircles));
         {
             // Note: GL_TRIANGLE_FAN draws N - 2 triangles
-            // TODO: Replace hard coded number of instances == 4
             CHKERRGL(glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, nTrianglesCircle + 2, nInstances)); 
         }
         CHKERRGL(glBindVertexArray(0));
@@ -137,25 +138,17 @@ void Circles::updateProjection(const GLfloat width, const GLfloat height) const
     CHKERRGL(glUseProgram(0));
 }
 
-void Circles::updateColors() const
+void Circles::animateColors(const GLfloat currentTime, const std::array<uint32_t, 7> &positions) const
 {
     CHKERRGL(glUseProgram(shaderProgram));
     {
-        CHKERRGL(glBindBuffer(GL_ARRAY_BUFFER, vboCirclesInstanceColor));
-        {
-            std::array<glm::vec3, nInstances> colors;
-            // Set all circles to green color
-            colors[0] = glm::vec3(0.0f, 1.0f, 0.0f);
-            colors[1] = glm::vec3(0.0f, 1.0f, 0.0f);
-            colors[2] = glm::vec3(0.0f, 1.0f, 0.0f);
-            colors[3] = glm::vec3(0.0f, 1.0f, 0.0f);
-            // Update contents of per instance color array buffer
-            CHKERRGL(glBufferSubData(GL_ARRAY_BUFFER,
-                                     0,
-                                     colors.size() * sizeof(colors[0]),
-                                     colors.data()));
-        }
-        CHKERRGL(glBindBuffer(GL_ARRAY_BUFFER, 0));
+        GLint playerPositionsLocation;
+        CHKERRGL(playerPositionsLocation = glGetUniformLocation(shaderProgram, "playerPositions"));
+        CHKERRGL(glUniform1uiv(playerPositionsLocation, positions.size(), positions.data()));
+        
+        GLint currentTimeLocation;
+        CHKERRGL(currentTimeLocation = glGetUniformLocation(shaderProgram, "currentTime"));
+        CHKERRGL(glUniform1f(currentTimeLocation, currentTime));
     }
     CHKERRGL(glUseProgram(0));
 }
