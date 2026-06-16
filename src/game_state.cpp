@@ -88,6 +88,7 @@ Game::Status Game::makeMove()
     Player &player = getCurrentPlayer();
     assert(!player.isFinished());  // prepareNextMove() assures the current player is active
 
+    // TODO: Should write makeMoveAs(player&, m_diceRoll) instead
     const std::vector<uint32_t> path = player.makeMove(*this, m_diceRoll);
     if (path.empty() && player.isPlayerUser())
     {
@@ -99,7 +100,7 @@ Game::Status Game::makeMove()
     printMove(path);  // debug
     
     const uint32_t endPosition = path.back();
-    
+    // TODO: Should write isBoeg(player) instead of player.isBoeg(*this)
     if (player.isBoeg(*this)) {
         // Update position of boeg
         boeg.position = endPosition;

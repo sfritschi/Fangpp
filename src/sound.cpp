@@ -4,13 +4,22 @@
 
 #include <fangpp/sound.hpp>
 
-Sound::Sound() : system(init()), click("media/sfx_select.ogg", system)
+Sound::Sound() : 
+    system(init()),
+    sfxMove("media/sfx_move.mp3", system),
+    sfxInvalidMove("media/sfx_invalid_move.mp3", system),
+    sfxCapture("media/sfx_capture.mp3", system),
+    sfxTarget("media/sfx_target.mp3", system)
 {
     // Load sounds into memory
     ERRCHECK(system->createSound("media/theme_player.ogg", 
                                  FMOD_LOOP_NORMAL, 
                                  nullptr, 
                                  &mainTheme));
+    ERRCHECK(system->createSound("media/theme_boeg.ogg", 
+                                 FMOD_LOOP_NORMAL, 
+                                 nullptr, 
+                                 &boegTheme));
 }
 
 FMOD::System *Sound::init()
@@ -29,17 +38,33 @@ void Sound::play(const Kind kind)
     switch (kind) 
     {
         case MAIN_THEME:
-            ERRCHECK(system->playSound(mainTheme, nullptr, false, &channel));
+            if (isPlaying(mainChannel))
+                ERRCHECK(mainChannel->stop());
+            ERRCHECK(system->playSound(mainTheme, nullptr, false, &mainChannel));
             break;
-        case CLICK_SFX:
-            click.play(system, channel);
+        case BOEG_THEME:
+            if (isPlaying(mainChannel))
+                ERRCHECK(mainChannel->stop());
+            ERRCHECK(system->playSound(boegTheme, nullptr, false, &mainChannel));
+            break;
+        case SFX_MOVE:
+            sfxMove.play(system, &sfxChannel);
+            break;
+        case SFX_INVALID_MOVE:
+            sfxInvalidMove.play(system, &sfxChannel);
+            break;
+        case SFX_CAPTURE:
+            sfxCapture.play(system, &sfxChannel);
+            break;
+        case SFX_TARGET:
+            sfxTarget.play(system, &sfxChannel);
             break;
         default:
             throw std::runtime_error("Unrecognized kind of sound");
     }
 }
 
-bool Sound::isPlaying() const
+bool Sound::isPlaying(FMOD::Channel *channel) const
 {
     bool isPlaying = false;
     
@@ -59,7 +84,7 @@ Sound::~Sound()
 {
     // Cleanup sound system resources
     ERRCHECK(mainTheme->release());
-    ERRCHECK(click.sound->release());
+    ERRCHECK(boegTheme->release());
     ERRCHECK(system->release());  // automatically calls close
 }
 

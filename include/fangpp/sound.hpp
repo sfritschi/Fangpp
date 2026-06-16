@@ -12,7 +12,11 @@ class Sound
 public:
     enum Kind {
         MAIN_THEME = 0,
-        CLICK_SFX
+        BOEG_THEME,
+        SFX_MOVE,
+        SFX_INVALID_MOVE,
+        SFX_CAPTURE,
+        SFX_TARGET
     };
     
     Sound();
@@ -21,7 +25,7 @@ public:
     
     void play(const Kind kind);
     
-    bool isPlaying() const;
+    bool isPlaying(FMOD::Channel *channel) const;
     
     void update();
     
@@ -33,7 +37,7 @@ public:
             using clock = std::chrono::steady_clock;
             using time_point = std::chrono::time_point<clock>;
             
-            CooldownTimer(double cooldown = 0.0) : m_cooldown(cooldown) {}
+            CooldownTimer() = default;
             
             bool hasExpired()
             {
@@ -63,7 +67,7 @@ public:
             void setCooldown(const double cooldown) { m_cooldown = cooldown; }
             
         private:
-            double m_cooldown;  // cooldown time in seconds
+            double m_cooldown = 0.0;  // cooldown time in seconds
             std::optional<time_point> m_start;
             std::optional<time_point> m_end;
     };
@@ -82,10 +86,15 @@ public:
             timer.setCooldown(static_cast<double>(lenMS) / 1000.0);
         }
         
-        void play(FMOD::System *system, FMOD::Channel *channel)
+        void play(FMOD::System *system, FMOD::Channel **channel)
         {
             if (timer.hasExpired())
-                ERRCHECK(system->playSound(sound, nullptr, false, &channel));
+                ERRCHECK(system->playSound(sound, nullptr, false, channel));
+        }
+        
+        ~SoundEffect()
+        {
+            ERRCHECK(sound->release());
         }
         
         FMOD::Sound *sound = nullptr;
@@ -99,8 +108,13 @@ private:
     
     FMOD::System *system = nullptr;
     FMOD::Sound *mainTheme = nullptr;
-    FMOD::Channel *channel = nullptr;
-    SoundEffect click;
+    FMOD::Sound *boegTheme = nullptr;
+    FMOD::Channel *mainChannel = nullptr;  // for background themes
+    FMOD::Channel *sfxChannel = nullptr;   // for sound effects
+    SoundEffect sfxMove;
+    SoundEffect sfxInvalidMove;
+    SoundEffect sfxCapture;
+    SoundEffect sfxTarget;
 };
 
 #endif /* SOUND_HPP */

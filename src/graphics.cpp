@@ -204,7 +204,6 @@ void Graphics::mouseButtonCallback(GLFWwindow *window, int button, int action, i
                 
                     if (dx*dx + dy*dy <= radius*radius)
                     {
-                        graphics->sound.play(Sound::CLICK_SFX);
                         // Set clicked vertex (circle) index needed for user strategy
                         graphics->gameState.setUserClickedPosition(i);
                         // Don't re-roll the dice if the user made an invalid move
@@ -212,6 +211,20 @@ void Graphics::mouseButtonCallback(GLFWwindow *window, int button, int action, i
                         if (status != Game::TRY_AGAIN && status != Game::GAME_OVER)
                         {
                             graphics->gameState.prepareNextMove();
+                        }
+                        if (status != Game::TRY_AGAIN)
+                        {
+                            graphics->sound.play(Sound::SFX_MOVE);
+                        }
+                        else
+                        {
+                            graphics->sound.play(Sound::SFX_INVALID_MOVE);
+                        }
+                        // Start playing 'boeg theme' when user captures the boeg
+                        if (status == Game::CAPTURE)
+                        {
+                            graphics->sound.play(Sound::SFX_CAPTURE);
+                            graphics->sound.play(Sound::BOEG_THEME);
                         }
                         
                         break;  // circles must NOT overlap; stopping
@@ -223,11 +236,25 @@ void Graphics::mouseButtonCallback(GLFWwindow *window, int button, int action, i
         {
             if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
             {
+                const auto boegId = graphics->gameState.getBoegId();
+                const auto userId = graphics->gameState.getUserPlayer().getId();
+                const bool wasUserBoeg = boegId == userId;
                 // Advance state of game
                 const auto status = graphics->gameState.makeMove();
                 if (status != Game::GAME_OVER)
                 {
                     graphics->gameState.prepareNextMove();
+                }
+                // If user was captured, play main theme again
+                if (status == Game::CAPTURE)
+                {
+                    graphics->sound.play(Sound::SFX_CAPTURE);
+                    if (wasUserBoeg)
+                        graphics->sound.play(Sound::MAIN_THEME);
+                }
+                else
+                {
+                    graphics->sound.play(Sound::SFX_MOVE);
                 }
             }
         }
