@@ -30,7 +30,7 @@ public:
         const uint8_t _nTargetsPlayer);
         
     // Run a single player move of game
-    Status nextMove();
+    Status makeMove();
     
     std::vector<uint32_t> getOpponentPositions(const Player &player) const;
     
@@ -55,9 +55,11 @@ public:
     
     void setUserClickedPosition(const uint32_t pos);
     
-    void rollDice();
+    void prepareNextMove();
     
     std::array<uint32_t, 7> prepareCharacterPositions() const;
+    
+    bool isGameOver() const;
     
 private:
     

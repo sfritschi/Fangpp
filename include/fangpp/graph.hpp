@@ -129,7 +129,7 @@ public:
         const bool isBoeg);
         
     const std::vector<Vertex> &getVertices() const { return vertices; };
-        
+    
     std::vector<LineVertex> getLinesFromEdges() const;
     
 private:

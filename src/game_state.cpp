@@ -40,7 +40,8 @@ Game::Game(const char *boardFile, const uint8_t _nPlayers,
         
         // Generate random player position from stations
         const uint32_t randomPlayerPos = stationVertices[dist(prng)];
-        // TODO: For now user is always the first player (red) -> 
+        // TODO: For now user is always the first player (red).
+        //       Make user choose or assign a random player to them in the future.
         MoveStrategy *strategy;
         if (i == 0)
         {
@@ -68,28 +69,24 @@ Game::Game(const char *boardFile, const uint8_t _nPlayers,
         .playerId = nPlayers  // invalid id
     };
     // Reset index of first to move
-    rollDice();  // initialize m_diceRoll
     moveIndex = 0;
     nActivePlayers = nPlayers;
+    
+    prepareNextMove();  // initialize m_diceRoll and current player
 }
 
-Game::Status Game::nextMove()
+Game::Status Game::makeMove()
 {
-    if (nActivePlayers == 1)
+    if (isGameOver())
     {
-        // All but one player have finished the game. The game is over
         return GAME_OVER;
     }
     
     Status status = CONTINUE;
-    // Move through moveOrder until next active player is found
-    while (players[moveOrder[moveIndex]].isFinished())
-    {
-        moveIndex = (moveIndex + 1) % nPlayers;
-    }
+    
     // Fetch next player according to move order
-    Player &player = players[moveOrder[moveIndex]];
-    assert(!player.isFinished());
+    Player &player = getCurrentPlayer();
+    assert(!player.isFinished());  // prepareNextMove() assures the current player is active
 
     const std::vector<uint32_t> path = player.makeMove(*this, m_diceRoll);
     if (path.empty() && player.isPlayerUser())
@@ -98,8 +95,8 @@ Game::Status Game::nextMove()
         return TRY_AGAIN;
     }
     
-    printMove(path);  // debug
     validateMove(player, path, m_diceRoll);  // debug
+    printMove(path);  // debug
     
     const uint32_t endPosition = path.back();
     
@@ -128,7 +125,8 @@ Game::Status Game::nextMove()
         }
     }
     
-    // If player captured the Boeg this move, they get to move again immediately
+    // If player captured the Boeg this move, they get to move again immediately.
+    // Otherwise, advance index into moveOrder
     if (status != CAPTURE) {
         // Increment index and wrap around
         moveIndex = (moveIndex + 1) % nPlayers;
@@ -150,6 +148,14 @@ void Game::validateMove(const Player &player, const std::vector<uint32_t> &path,
     {
         throw std::runtime_error("Path is too long!");
     } 
+    
+    for (const uint32_t position : path)
+    {
+        if (position >= getNVertices())
+        {
+            throw std::runtime_error("Invalid position (vertex index) encountered in path");
+        }
+    }
     
     // Check if path is plausible
     const bool isBoeg = player.isBoeg(*this);
@@ -223,8 +229,9 @@ bool Game::checkPlayerFinished(Player &player, uint32_t endPosition)
         // Reset id of player playing Boeg
         boeg.playerId = nPlayers;
         // Decrement active player count.
-        // If at most 1 remaining player, game over
-        return --nActivePlayers <= 1;
+        --nActivePlayers;
+        // If at most 1 remaining player or if user has finished, game over
+        return nActivePlayers == 1 || player.isPlayerUser();
     }
     
     return false;
@@ -282,23 +289,37 @@ bool Game::isOpponentAtTarget(const Player &player, const uint32_t target) const
 
 void Game::setUserClickedPosition(const uint32_t pos)
 {
+    assert(checkIfUserTurn());
+    
     players[moveOrder[moveIndex]].setPlayerClickedPosition(pos);
 }
 
-void Game::rollDice()
+void Game::prepareNextMove()
 {
+    if (isGameOver())
+    {
+        return;  // nothing to do
+    }
+    // Advance moveIndex until it corresponds to the next active player
+    // according to the move order
+    while (getCurrentPlayer().isFinished())
+    {
+        moveIndex = (moveIndex + 1) % nPlayers;
+    }
+    
+    // Roll the dice for the next player
     std::uniform_int_distribution<uint32_t> dist (1, 6);
     m_diceRoll = dist(prng);
 }
 
 std::array<uint32_t, 7> Game::prepareCharacterPositions() const
 {
+    assert(players.size() + 1 <= Player::maxPlayableCharacters);
+    
     // Assumes that UINT32_MAX is not a valid vertex/position index
     const uint32_t invalidPosition = std::numeric_limits<uint32_t>::max();
-    std::array<uint32_t, 7> positions;
+    std::array<uint32_t, Player::maxPlayableCharacters> positions;
     positions.fill(invalidPosition);
-    
-    assert(players.size() + 1 <= Player::maxPlayableCharacters);
     
     for (uint32_t i = 0; i < players.size(); ++i)
     {
@@ -313,11 +334,24 @@ std::array<uint32_t, 7> Game::prepareCharacterPositions() const
     return positions;
 }
 
+bool Game::isGameOver() const
+{
+    // Either the user playing the game is the only player left,
+    // or they have finished the game before at least 1 NPC player
+    return nActivePlayers == 1 || getUserPlayer().isFinished();
+}
+
 void Game::printMove(const std::vector<uint32_t> &move) const
 {
-    for (const auto position : move) {
-        const auto &location = getVertices()[position].location;
+    const auto &vertices = getVertices();
+    
+    for (uint32_t i = 0; i + 1 < move.size(); ++i) {
+        const uint32_t position = move[i];
+        const auto &location = vertices[position].location;
         std::cout << location << " -> ";
     }
+    
+    const auto &location = vertices[move.back()].location;
+    std::cout << location;
     std::cout << '\n';
 }

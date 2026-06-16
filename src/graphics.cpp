@@ -112,12 +112,15 @@ void Graphics::run()
         }
         
         // Draw name of the location where the user is currently
-        const uint32_t vertexId = gameState.getUserPlayer().getPosition();
+        uint32_t vertexId = userPlayer.getPosition();
+        if (userPlayer.getId() == gameState.getBoegId())
+        {
+            // User is currently controlling the boeg, use boeg's location instead
+            vertexId = gameState.getBoegPosition();
+        }
         const auto &vertex = gameState.getVertices()[vertexId];
         const std::wstring userPositionMsg(vertex.location.begin(), vertex.location.end());
-        
-        const auto userDim = text.getDimensions(userPositionMsg);
-        text.drawAt(userPositionMsg, -0.5f*width, -0.5f*height + userDim.height, glm::vec3(0.0f), aspect);
+        text.drawAt(userPositionMsg, -0.5f*width, -0.5f*height + 20.0f, glm::vec3(0.0f), aspect);
         
         //for (const auto &vertex : gameState.getVertices())
         //{
@@ -159,7 +162,8 @@ void Graphics::framebufferResizeCallback(GLFWwindow* window, int width, int heig
     (void)height;  // unused
     
     auto graphics = reinterpret_cast<Graphics *>(glfwGetWindowUserPointer(window));
-    graphics->framebufferResized = true;
+    if (graphics)
+        graphics->framebufferResized = true;
 }
     
 void Graphics::mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
@@ -203,12 +207,11 @@ void Graphics::mouseButtonCallback(GLFWwindow *window, int button, int action, i
                         graphics->sound.play(Sound::CLICK_SFX);
                         // Set clicked vertex (circle) index needed for user strategy
                         graphics->gameState.setUserClickedPosition(i);
-                        // TODO: Move logic of rolling dice to Game::nextMove()
                         // Don't re-roll the dice if the user made an invalid move
-                        const auto status = graphics->gameState.nextMove();
-                        if (status != Game::TRY_AGAIN)
+                        const auto status = graphics->gameState.makeMove();
+                        if (status != Game::TRY_AGAIN && status != Game::GAME_OVER)
                         {
-                            graphics->gameState.rollDice();
+                            graphics->gameState.prepareNextMove();
                         }
                         
                         break;  // circles must NOT overlap; stopping
@@ -221,12 +224,11 @@ void Graphics::mouseButtonCallback(GLFWwindow *window, int button, int action, i
             if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
             {
                 // Advance state of game
-                const Game::Status status = graphics->gameState.nextMove();
-                if (status == Game::GAME_OVER)
+                const auto status = graphics->gameState.makeMove();
+                if (status != Game::GAME_OVER)
                 {
-                    // TODO: Reset game
+                    graphics->gameState.prepareNextMove();
                 }
-                graphics->gameState.rollDice();
             }
         }
     }
