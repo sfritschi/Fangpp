@@ -41,6 +41,10 @@ public:
             
             bool hasExpired()
             {
+                if (m_cooldown == 0.0)
+                {
+                    return true;  // no cooldown
+                }
                 // For the first time, there is no cooldown
                 if (!m_start.has_value() && !m_end.has_value())
                 {
@@ -74,16 +78,19 @@ public:
     
     struct SoundEffect
     {
-        SoundEffect(const char *path, FMOD::System *system)
+        SoundEffect(const char *path, FMOD::System *system, bool enableCooldown)
         {
             ERRCHECK(system->createSound(path,
                                          FMOD_DEFAULT,
                                          nullptr,
                                          &sound));
-    
-            unsigned int lenMS = 0;
-            FATALERROR(sound->getLength(&lenMS, FMOD_TIMEUNIT_MS));
-            timer.setCooldown(static_cast<double>(lenMS) / 1000.0);
+            
+            if (enableCooldown)
+            {
+                unsigned int lenMS = 0;
+                FATALERROR(sound->getLength(&lenMS, FMOD_TIMEUNIT_MS));
+                timer.setCooldown(static_cast<double>(lenMS) / 1000.0);
+            }
         }
         
         void play(FMOD::System *system, FMOD::Channel **channel)
@@ -107,7 +114,7 @@ private:
     static void FATALERROR(FMOD_RESULT result);
     
     unsigned int mainThemePosPCM = 0;  // position (PCM samples) in main theme
-    unsigned int boegThemePosPCM = 0;  // position (PCM samples) in main theme
+    unsigned int boegThemePosPCM = 0;  // position (PCM samples) in boeg theme
     FMOD::System *system = nullptr;
     FMOD::Sound *mainTheme = nullptr;
     FMOD::Sound *boegTheme = nullptr;

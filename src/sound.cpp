@@ -6,10 +6,10 @@
 
 Sound::Sound() : 
     system(init()),
-    sfxMove("media/sfx_move.mp3", system),
-    sfxInvalidMove("media/sfx_invalid_move.mp3", system),
-    sfxCapture("media/sfx_capture.mp3", system),
-    sfxTarget("media/sfx_target.mp3", system)
+    sfxMove("media/sfx_move.mp3", system, false),
+    sfxInvalidMove("media/sfx_invalid_move.mp3", system, true),
+    sfxCapture("media/sfx_capture.mp3", system, false),
+    sfxTarget("media/sfx_target.mp3", system, false)
 {
     // Load sounds into memory
     ERRCHECK(system->createSound("media/theme_player.ogg", 
