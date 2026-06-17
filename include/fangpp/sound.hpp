@@ -106,6 +106,8 @@ private:
     static void ERRCHECK(FMOD_RESULT result);
     static void FATALERROR(FMOD_RESULT result);
     
+    unsigned int mainThemePosPCM = 0;  // position (PCM samples) in main theme
+    unsigned int boegThemePosPCM = 0;  // position (PCM samples) in main theme
     FMOD::System *system = nullptr;
     FMOD::Sound *mainTheme = nullptr;
     FMOD::Sound *boegTheme = nullptr;

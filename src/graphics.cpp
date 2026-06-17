@@ -129,7 +129,7 @@ void Graphics::run()
         //    text.drawAtCentered(wloc, vertex.xpos*width*0.5f, vertex.ypos*height*0.5f, glm::vec3(0.0f, 0.0f, 1.0f), Text::CENTER_BOTH, aspect, 0.4);
         //}
         
-        // Draw active targets of user player
+        // Draw active targets of user
         for (const auto target : userPlayer.getActiveTargets())
         {
             const auto &vertex = gameState.getVertices()[target];
@@ -173,6 +173,11 @@ void Graphics::mouseButtonCallback(GLFWwindow *window, int button, int action, i
     auto graphics = reinterpret_cast<Graphics *>(glfwGetWindowUserPointer(window));
     if (graphics)
     {
+        if (graphics->gameState.isGameOver())
+        {
+            return;  // nothing to do...
+        }
+        
         const bool isUsersTurn = graphics->gameState.checkIfUserTurn();
         
         if (isUsersTurn)
@@ -204,6 +209,7 @@ void Graphics::mouseButtonCallback(GLFWwindow *window, int button, int action, i
                 
                     if (dx*dx + dy*dy <= radius*radius)
                     {
+                        // TODO: Move sound logic in separate function
                         // Set clicked vertex (circle) index needed for user strategy
                         graphics->gameState.setUserClickedPosition(i);
                         // Don't re-roll the dice if the user made an invalid move
@@ -212,19 +218,25 @@ void Graphics::mouseButtonCallback(GLFWwindow *window, int button, int action, i
                         {
                             graphics->gameState.prepareNextMove();
                         }
-                        if (status != Game::TRY_AGAIN)
+                        
+                        
+                        if (status == Game::CONTINUE)
                         {
                             graphics->sound.play(Sound::SFX_MOVE);
                         }
-                        else
+                        else if (status == Game::TRY_AGAIN)
                         {
                             graphics->sound.play(Sound::SFX_INVALID_MOVE);
                         }
-                        // Start playing 'boeg theme' when user captures the boeg
-                        if (status == Game::CAPTURE)
+                        else if (status == Game::CAPTURE)
                         {
+                            // Start playing 'boeg theme' when user captures the boeg
                             graphics->sound.play(Sound::SFX_CAPTURE);
                             graphics->sound.play(Sound::BOEG_THEME);
+                        }
+                        else if (status == Game::TARGET_VISITED || status == Game::GAME_OVER)
+                        {
+                            graphics->sound.play(Sound::SFX_TARGET);
                         }
                         
                         break;  // circles must NOT overlap; stopping
@@ -252,9 +264,13 @@ void Graphics::mouseButtonCallback(GLFWwindow *window, int button, int action, i
                     if (wasUserBoeg)
                         graphics->sound.play(Sound::MAIN_THEME);
                 }
-                else
+                else if (status == Game::CONTINUE)
                 {
                     graphics->sound.play(Sound::SFX_MOVE);
+                }
+                else if (status == Game::TARGET_VISITED || status == Game::GAME_OVER)
+                {
+                    graphics->sound.play(Sound::SFX_TARGET);
                 }
             }
         }

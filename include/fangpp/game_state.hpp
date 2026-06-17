@@ -22,6 +22,7 @@ public:
     enum Status {
         CONTINUE = 0,     // move on to next player in order
         CAPTURE,          // same player moves again (Boeg was captured)
+        TARGET_VISITED,   // player has visited one of their active targets
         TRY_AGAIN,        // user made an invalid move and has to try again
         GAME_OVER         // all (but one) player have finished the game
     };
@@ -37,7 +38,7 @@ public:
     void validateMove(const Player &player, const std::vector<uint32_t> &path, 
         const uint32_t diceRoll);
     
-    bool checkPlayerFinished(Player &player, uint32_t endPosition);
+    Status checkPlayerFinished(Player &player, uint32_t endPosition);
     
     Player &getCurrentPlayer();
     
@@ -52,6 +53,8 @@ public:
     uint8_t getBoegId() const { return boeg.playerId; }
     
     uint32_t getDiceRoll() const { return m_diceRoll; }
+    
+    uint32_t getCurrentPlayerNumTargets() const;
     
     void setUserClickedPosition(const uint32_t pos);
     

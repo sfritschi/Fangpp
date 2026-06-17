@@ -79,7 +79,7 @@ Game::Status Game::makeMove()
 {
     if (isGameOver())
     {
-        return GAME_OVER;
+        return GAME_OVER;  // nothing to do...
     }
     
     Status status = CONTINUE;
@@ -104,11 +104,8 @@ Game::Status Game::makeMove()
     if (player.isBoeg(*this)) {
         // Update position of boeg
         boeg.position = endPosition;
-        // Check if player hit active target as Boeg
-        if (checkPlayerFinished(player, endPosition))
-        {
-            return GAME_OVER;
-        }
+        // Check if player hit active target and potentially finished the game as Boeg
+        status = checkPlayerFinished(player, endPosition);
     } else {
         // Update position of player
         player.setPosition(endPosition);
@@ -117,18 +114,20 @@ Game::Status Game::makeMove()
             // Player captured Boeg
             boeg.playerId = player.getId();
             // Check if capture position of Boeg is active player target
-            if (checkPlayerFinished(player, endPosition))
+            status = checkPlayerFinished(player, endPosition);
+            // Order of precedence: GAME_OVER > CAPTURE > TARGET_VISITED
+            if (status != GAME_OVER)
             {
-                return GAME_OVER;
+                // Move again, now playing as Boeg
+                // Note: This status takes precedence over TARGET_VISITED
+                status = CAPTURE;
             }
-            // Move again, now playing as Boeg
-            status = CAPTURE;
         }
     }
     
     // If player captured the Boeg this move, they get to move again immediately.
     // Otherwise, advance index into moveOrder
-    if (status != CAPTURE) {
+    if (status != CAPTURE && status != GAME_OVER) {
         // Increment index and wrap around
         moveIndex = (moveIndex + 1) % nPlayers;
     }
@@ -221,21 +220,27 @@ void Game::validateMove(const Player &player, const std::vector<uint32_t> &path,
     }
 }
 
-bool Game::checkPlayerFinished(Player &player, uint32_t endPosition)
+Game::Status Game::checkPlayerFinished(Player &player, uint32_t endPosition)
 {
     assert(player.isBoeg(*this) && "expected player to be playing as Boeg");
     
-    if (player.checkVisitTarget(endPosition) && player.isFinished()) 
+    Status status = CONTINUE;
+    if (player.checkVisitTarget(endPosition)) 
     {
-        // Reset id of player playing Boeg
-        boeg.playerId = nPlayers;
-        // Decrement active player count.
-        --nActivePlayers;
-        // If at most 1 remaining player or if user has finished, game over
-        return nActivePlayers == 1 || player.isPlayerUser();
+        status = TARGET_VISITED;
+        if (player.isFinished())
+        {
+            // Reset id of player playing Boeg
+            boeg.playerId = nPlayers;
+            // Decrement active player count.
+            --nActivePlayers;
+            // If at most 1 remaining player or if user has finished, game over
+            if (nActivePlayers == 1 || player.isPlayerUser())
+                status = GAME_OVER;
+        }
     }
     
-    return false;
+    return status;
 }
 
 Player &Game::getCurrentPlayer()
@@ -254,6 +259,11 @@ const Player &Game::getUserPlayer() const
     }
     
     throw std::runtime_error("Failed to find player associated with user");
+}
+
+uint32_t Game::getCurrentPlayerNumTargets() const
+{
+    return players[moveOrder[moveIndex]].getActiveTargets().size();
 }
 
 bool Game::checkIfUserTurn() const

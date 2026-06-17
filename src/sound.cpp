@@ -39,13 +39,26 @@ void Sound::play(const Kind kind)
     {
         case MAIN_THEME:
             if (isPlaying(mainChannel))
+            {
+                // Currently playing boeg theme: Stop playing and save position in theme
+                ERRCHECK(mainChannel->getPosition(&boegThemePosPCM, FMOD_TIMEUNIT_PCM));
                 ERRCHECK(mainChannel->stop());
+            }
             ERRCHECK(system->playSound(mainTheme, nullptr, false, &mainChannel));
+            // Restore position of main theme from last time
+            ERRCHECK(mainChannel->setPosition(mainThemePosPCM, FMOD_TIMEUNIT_PCM));                
             break;
         case BOEG_THEME:
             if (isPlaying(mainChannel))
+            {
+                // Currently playing main theme: Stop playing and save position in theme
+                ERRCHECK(mainChannel->getPosition(&mainThemePosPCM, FMOD_TIMEUNIT_PCM));
                 ERRCHECK(mainChannel->stop());
+            }
+            
             ERRCHECK(system->playSound(boegTheme, nullptr, false, &mainChannel));
+            // Restore position of boeg theme from last time
+            ERRCHECK(mainChannel->setPosition(boegThemePosPCM, FMOD_TIMEUNIT_PCM));
             break;
         case SFX_MOVE:
             sfxMove.play(system, &sfxChannel);
