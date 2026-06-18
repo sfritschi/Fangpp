@@ -389,7 +389,7 @@ std::vector<uint32_t> Graph::findPathOfLength(const uint32_t source,
     }
     
     // Prepare final output
-    std::vector<uint32_t> path(pathLength + 1);
+    std::vector<uint32_t> path(pathLength + 1);  // + 1 for source (starting position)
     for (uint32_t v = source, i = 0; i <= pathLength; v = query.children[v], ++i) {
         path[i] = v;
     }

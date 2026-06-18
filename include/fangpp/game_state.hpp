@@ -20,11 +20,11 @@ class Game : public Graph {
 public:
 
     enum Status {
-        CONTINUE = 0,     // move on to next player in order
-        CAPTURE,          // same player moves again (Boeg was captured)
-        TARGET_VISITED,   // player has visited one of their active targets
-        TRY_AGAIN,        // user made an invalid move and has to try again
-        GAME_OVER         // all (but one) player have finished the game
+        CONTINUE       = (1 << 0),  // move on to next player in order
+        CAPTURE        = (1 << 1),  // same player moves again (Boeg was captured)
+        TARGET_VISITED = (1 << 2),  // player has visited one of their active targets
+        TRY_AGAIN      = (1 << 3),  // user made an invalid move and has to try again
+        GAME_OVER      = (1 << 4)   // all (but one) player have finished the game
     };
     
     Game(const char *boardFile, const uint8_t _nPlayers, 
@@ -58,12 +58,15 @@ public:
     
     void setUserClickedPosition(const uint32_t pos);
     
-    void prepareNextMove();
+    void prepareNextMove(Status status);
     
     std::array<uint32_t, 7> prepareCharacterPositions() const;
     
     bool isGameOver() const;
     
+    bool isUserPlayingAsBoeg() const;
+    
+    void rollDice();
 private:
     
     void printMove(const std::vector<uint32_t> &move) const;

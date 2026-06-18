@@ -158,8 +158,7 @@ std::vector<uint32_t> UserStrategy::moveBoeg(Game &state, Player &player,
     }
     // In case user (playing as boeg) visited one of their active targets,
     // try to return a shortest path ending at that target position
-    const auto &targets = player.getActiveTargets();
-    for (const uint32_t target : targets)
+    for (const uint32_t target : player.getActiveTargets())
     {
         if (m_userClickedPosition == target)
         {

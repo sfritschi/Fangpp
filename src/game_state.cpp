@@ -72,7 +72,7 @@ Game::Game(const char *boardFile, const uint8_t _nPlayers,
     moveIndex = 0;
     nActivePlayers = nPlayers;
     
-    prepareNextMove();  // initialize m_diceRoll and current player
+    rollDice();  // initialize m_diceRoll and current player
 }
 
 Game::Status Game::makeMove()
@@ -115,21 +115,8 @@ Game::Status Game::makeMove()
             boeg.playerId = player.getId();
             // Check if capture position of Boeg is active player target
             status = checkPlayerFinished(player, endPosition);
-            // Order of precedence: GAME_OVER > CAPTURE > TARGET_VISITED
-            if (status != GAME_OVER)
-            {
-                // Move again, now playing as Boeg
-                // Note: This status takes precedence over TARGET_VISITED
-                status = CAPTURE;
-            }
+            status = static_cast<Status>(status | CAPTURE);
         }
-    }
-    
-    // If player captured the Boeg this move, they get to move again immediately.
-    // Otherwise, advance index into moveOrder
-    if (status != CAPTURE && status != GAME_OVER) {
-        // Increment index and wrap around
-        moveIndex = (moveIndex + 1) % nPlayers;
     }
     
     return status;
@@ -227,7 +214,7 @@ Game::Status Game::checkPlayerFinished(Player &player, uint32_t endPosition)
     Status status = CONTINUE;
     if (player.checkVisitTarget(endPosition)) 
     {
-        status = TARGET_VISITED;
+        status = static_cast<Status>(status | TARGET_VISITED);
         if (player.isFinished())
         {
             // Reset id of player playing Boeg
@@ -236,7 +223,11 @@ Game::Status Game::checkPlayerFinished(Player &player, uint32_t endPosition)
             --nActivePlayers;
             // If at most 1 remaining player or if user has finished, game over
             if (nActivePlayers == 1 || player.isPlayerUser())
-                status = GAME_OVER;
+            {
+                // Unset continue bit
+                status = static_cast<Status>(status & ~CONTINUE);
+                status = static_cast<Status>(status | GAME_OVER);
+            }
         }
     }
     
@@ -305,11 +296,18 @@ void Game::setUserClickedPosition(const uint32_t pos)
     players[moveOrder[moveIndex]].setPlayerClickedPosition(pos);
 }
 
-void Game::prepareNextMove()
+void Game::prepareNextMove(Status status)
 {
     if (isGameOver())
     {
         return;  // nothing to do
+    }
+    assert(!(status & GAME_OVER));
+    // If player captured the Boeg this move, or they made an invalid move,
+    // they get to move again immediately. Otherwise, advance index into moveOrder
+    if (!(status & TRY_AGAIN) && !(status & CAPTURE)) {
+        // Increment index and wrap around
+        moveIndex = (moveIndex + 1) % nPlayers;
     }
     // Advance moveIndex until it corresponds to the next active player
     // according to the move order
@@ -319,8 +317,7 @@ void Game::prepareNextMove()
     }
     
     // Roll the dice for the next player
-    std::uniform_int_distribution<uint32_t> dist (1, 6);
-    m_diceRoll = dist(prng);
+    rollDice();
 }
 
 std::array<uint32_t, 7> Game::prepareCharacterPositions() const
@@ -350,6 +347,17 @@ bool Game::isGameOver() const
     // Either the user playing the game is the only player left,
     // or they have finished the game before at least 1 NPC player
     return nActivePlayers == 1 || getUserPlayer().isFinished();
+}
+
+bool Game::isUserPlayingAsBoeg() const
+{
+    return getUserPlayer().getId() == boeg.playerId;    
+}
+
+void Game::rollDice()
+{
+    std::uniform_int_distribution<uint32_t> dist (1, 6);
+    m_diceRoll = dist(prng);    
 }
 
 void Game::printMove(const std::vector<uint32_t> &move) const

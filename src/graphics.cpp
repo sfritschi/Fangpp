@@ -141,6 +141,44 @@ void Graphics::run()
     }
 }
 
+void Graphics::playStatusSound(Game::Status status, bool wasUserPlayingAsBoeg)
+{
+    const bool isUser = gameState.checkIfUserTurn();
+    if (isUser && (status & Game::TRY_AGAIN))
+    {
+        sound.play(Sound::SFX_INVALID_MOVE);
+    }
+    else if ((status & Game::CONTINUE) || (status & Game::GAME_OVER))
+    {
+        if (status & Game::CAPTURE)
+        {
+            if (isUser)
+            {
+                sound.play(Sound::BOEG_THEME);
+            }
+            else if (wasUserPlayingAsBoeg)
+            {
+                // If user was captured, play main theme again
+                sound.play(Sound::MAIN_THEME);
+            }
+            sound.play(Sound::SFX_CAPTURE);
+            if (status & Game::TARGET_VISITED)
+            {
+                // TODO: Maybe wait for completion of capture sound
+                sound.play(Sound::SFX_TARGET);
+            }
+        }
+        else if (status & Game::TARGET_VISITED)
+        {
+            sound.play(Sound::SFX_TARGET);
+        }
+        else
+        {
+            sound.play(Sound::SFX_MOVE);
+        }
+    }    
+}
+ 
 Graphics::~Graphics()
 {
     // Free OpenGL resources
@@ -214,29 +252,11 @@ void Graphics::mouseButtonCallback(GLFWwindow *window, int button, int action, i
                         graphics->gameState.setUserClickedPosition(i);
                         // Don't re-roll the dice if the user made an invalid move
                         const auto status = graphics->gameState.makeMove();
-                        if (status != Game::TRY_AGAIN && status != Game::GAME_OVER)
-                        {
-                            graphics->gameState.prepareNextMove();
-                        }
+                        graphics->playStatusSound(status, false);
                         
-                        
-                        if (status == Game::CONTINUE)
+                        if (!(status & Game::TRY_AGAIN) && !(status & Game::GAME_OVER))
                         {
-                            graphics->sound.play(Sound::SFX_MOVE);
-                        }
-                        else if (status == Game::TRY_AGAIN)
-                        {
-                            graphics->sound.play(Sound::SFX_INVALID_MOVE);
-                        }
-                        else if (status == Game::CAPTURE)
-                        {
-                            // Start playing 'boeg theme' when user captures the boeg
-                            graphics->sound.play(Sound::SFX_CAPTURE);
-                            graphics->sound.play(Sound::BOEG_THEME);
-                        }
-                        else if (status == Game::TARGET_VISITED || status == Game::GAME_OVER)
-                        {
-                            graphics->sound.play(Sound::SFX_TARGET);
+                            graphics->gameState.prepareNextMove(status);
                         }
                         
                         break;  // circles must NOT overlap; stopping
@@ -248,29 +268,14 @@ void Graphics::mouseButtonCallback(GLFWwindow *window, int button, int action, i
         {
             if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
             {
-                const auto boegId = graphics->gameState.getBoegId();
-                const auto userId = graphics->gameState.getUserPlayer().getId();
-                const bool wasUserBoeg = boegId == userId;
+                const bool wasUserPlayingAsBoeg = graphics->gameState.isUserPlayingAsBoeg();
                 // Advance state of game
                 const auto status = graphics->gameState.makeMove();
-                if (status != Game::GAME_OVER)
+                graphics->playStatusSound(status, wasUserPlayingAsBoeg);
+                
+                if (!(status & Game::GAME_OVER))
                 {
-                    graphics->gameState.prepareNextMove();
-                }
-                // If user was captured, play main theme again
-                if (status == Game::CAPTURE)
-                {
-                    graphics->sound.play(Sound::SFX_CAPTURE);
-                    if (wasUserBoeg)
-                        graphics->sound.play(Sound::MAIN_THEME);
-                }
-                else if (status == Game::CONTINUE)
-                {
-                    graphics->sound.play(Sound::SFX_MOVE);
-                }
-                else if (status == Game::TARGET_VISITED || status == Game::GAME_OVER)
-                {
-                    graphics->sound.play(Sound::SFX_TARGET);
+                    graphics->gameState.prepareNextMove(status);
                 }
             }
         }

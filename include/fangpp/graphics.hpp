@@ -25,12 +25,15 @@ private:
     
     void updateProjection(const GLfloat width, const GLfloat height) const;
     
+    // Play appropriate sound for the status of the game after a move
+    void playStatusSound(Game::Status status, bool wasUserPlayingAsBoeg);
+    
     // Callbacks
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
     static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods);
     static void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
     static void glfwError(GLint error, const GLchar *description);
-        
+    
     GLFWwindow *window = nullptr;
     
     Game gameState;
