@@ -164,7 +164,7 @@ void Graphics::playStatusSound(Game::Status status, bool wasUserPlayingAsBoeg)
             sound.play(Sound::SFX_CAPTURE);
             if (status & Game::TARGET_VISITED)
             {
-                // TODO: Maybe wait for completion of capture sound
+                // TODO: Maybe wait for completion of capture sound first
                 sound.play(Sound::SFX_TARGET);
             }
         }
@@ -178,7 +178,40 @@ void Graphics::playStatusSound(Game::Status status, bool wasUserPlayingAsBoeg)
         }
     }    
 }
- 
+
+uint32_t Graphics::getClickedVertexByIndex() const
+{
+    // Compute device coordinates from cursor pos
+    GLdouble xpos = 0.0, ypos = 0.0;
+    glfwGetCursorPos(window, &xpos, &ypos);
+    
+    GLint width = 0, height = 0;
+    glfwGetFramebufferSize(window, &width, &height);        
+    // Map from screen coordinates to device coordinates
+    // TODO: Replace this with inline function
+    xpos = 2.0 * xpos / width - 1.0;
+    ypos = 1.0 - 2.0 * ypos / height;  // flip y-axis
+    // Inverse orthographic projection (multiply by aspect ratio)
+    xpos *= static_cast<GLdouble>(width) / height;
+            
+    const GLdouble radius = circles.radius;
+    
+    // Check all vertices for potential collision with mouse click position
+    const auto &vertices = gameState.getVertices();
+    for (uint32_t i = 0; i < vertices.size(); ++i)
+    {
+        const GLdouble dx = xpos - vertices[i].xpos;
+        const GLdouble dy = ypos - vertices[i].ypos;
+    
+        if (dx*dx + dy*dy <= radius*radius)
+        {
+            return i;
+        }
+    }
+    
+    return std::numeric_limits<uint32_t>::max();  // no vertex was clicked
+}
+
 Graphics::~Graphics()
 {
     // Free OpenGL resources
@@ -222,44 +255,18 @@ void Graphics::mouseButtonCallback(GLFWwindow *window, int button, int action, i
         {
             if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
             {
-                // Left mouse button was pressed
-                // Compute device coordinates from cursor pos
-                GLdouble xpos = 0.0, ypos = 0.0;
-                glfwGetCursorPos(window, &xpos, &ypos);
-                
-                GLint width = 0, height = 0;
-                glfwGetFramebufferSize(window, &width, &height);        
-                // Map from screen coordinates to device coordinates
-                // TODO: Replace this with inline function
-                xpos = 2.0 * xpos / width - 1.0;
-                ypos = 1.0 - 2.0 * ypos / height;  // flip y-axis
-                // Inverse orthographic projection (multiply by aspect ratio)
-                xpos *= static_cast<GLdouble>(width) / height;
-                        
-                const GLdouble radius = graphics->circles.radius;
-                
-                // Check all vertices for potential collision with mouse click position
-                const auto &vertices = graphics->gameState.getVertices();
-                for (uint32_t i = 0; i < vertices.size(); ++i)
+                const uint32_t vertexIndex = graphics->getClickedVertexByIndex();
+                if (vertexIndex < graphics->gameState.getNVertices())
                 {
-                    const GLdouble dx = xpos - vertices[i].xpos;
-                    const GLdouble dy = ypos - vertices[i].ypos;
-                
-                    if (dx*dx + dy*dy <= radius*radius)
+                    // Set clicked vertex (circle) index needed for user strategy
+                    graphics->gameState.setUserClickedPosition(vertexIndex);
+                    // Advance state of game
+                    const auto status = graphics->gameState.makeMove();
+                    graphics->playStatusSound(status, false);
+                    // Don't re-roll the dice if the user made an invalid move
+                    if (!(status & Game::TRY_AGAIN) && !(status & Game::GAME_OVER))
                     {
-                        // TODO: Move sound logic in separate function
-                        // Set clicked vertex (circle) index needed for user strategy
-                        graphics->gameState.setUserClickedPosition(i);
-                        // Don't re-roll the dice if the user made an invalid move
-                        const auto status = graphics->gameState.makeMove();
-                        graphics->playStatusSound(status, false);
-                        
-                        if (!(status & Game::TRY_AGAIN) && !(status & Game::GAME_OVER))
-                        {
-                            graphics->gameState.prepareNextMove(status);
-                        }
-                        
-                        break;  // circles must NOT overlap; stopping
+                        graphics->gameState.prepareNextMove(status);
                     }
                 }
             }

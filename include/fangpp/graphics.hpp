@@ -12,6 +12,7 @@
 #include <string>
 #include <chrono>
 
+// TODO: Rename Graphics to something like GameApplication etc.
 class Graphics
 {
 public:
@@ -27,6 +28,9 @@ private:
     
     // Play appropriate sound for the status of the game after a move
     void playStatusSound(Game::Status status, bool wasUserPlayingAsBoeg);
+    
+    // Return index of vertex that was clicked by the user if any
+    uint32_t getClickedVertexByIndex() const;
     
     // Callbacks
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height);

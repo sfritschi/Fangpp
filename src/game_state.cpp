@@ -72,7 +72,7 @@ Game::Game(const char *boardFile, const uint8_t _nPlayers,
     moveIndex = 0;
     nActivePlayers = nPlayers;
     
-    rollDice();  // initialize m_diceRoll and current player
+    rollDice();  // initialize m_diceRoll
 }
 
 Game::Status Game::makeMove()
@@ -86,7 +86,7 @@ Game::Status Game::makeMove()
     
     // Fetch next player according to move order
     Player &player = getCurrentPlayer();
-    assert(!player.isFinished());  // prepareNextMove() assures the current player is active
+    assert(!player.isFinished());  // prepareNextMove() ensures the current player is active
 
     // TODO: Should write makeMoveAs(player&, m_diceRoll) instead
     const std::vector<uint32_t> path = player.makeMove(*this, m_diceRoll);
@@ -224,7 +224,7 @@ Game::Status Game::checkPlayerFinished(Player &player, uint32_t endPosition)
             // If at most 1 remaining player or if user has finished, game over
             if (nActivePlayers == 1 || player.isPlayerUser())
             {
-                // Unset continue bit
+                // Unset continue bit and set game_over bit
                 status = static_cast<Status>(status & ~CONTINUE);
                 status = static_cast<Status>(status | GAME_OVER);
             }
@@ -298,14 +298,16 @@ void Game::setUserClickedPosition(const uint32_t pos)
 
 void Game::prepareNextMove(Status status)
 {
-    if (isGameOver())
+    // Check if the game is already over, or if the user made an invalid move
+    if (isGameOver() || (status & TRY_AGAIN))
     {
         return;  // nothing to do
     }
     assert(!(status & GAME_OVER));
-    // If player captured the Boeg this move, or they made an invalid move,
+    // If player captured the Boeg this move
     // they get to move again immediately. Otherwise, advance index into moveOrder
-    if (!(status & TRY_AGAIN) && !(status & CAPTURE)) {
+    // for the next player
+    if (!(status & CAPTURE)) {
         // Increment index and wrap around
         moveIndex = (moveIndex + 1) % nPlayers;
     }
