@@ -11,6 +11,7 @@
 #include <iostream>
 #include <string>
 #include <chrono>
+#include <optional>
 
 // TODO: Rename Graphics to something like GameApplication etc.
 class Graphics
@@ -35,6 +36,7 @@ private:
     // Callbacks
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
     static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods);
+    static void cursorPosCallback(GLFWwindow *window, double xpos, double ypos);
     static void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods);
     static void glfwError(GLint error, const GLchar *description);
     
@@ -47,6 +49,8 @@ private:
     Text text;
     
     bool framebufferResized = false;
+    // The vertex index that corresponds to the last location that was (mouse-)hovered over
+    std::optional<uint32_t> hoverLocationIndex;
     
     // Default (initial) resolution of window
     static constexpr const GLint defaultWidth  = 1200;

@@ -13,7 +13,7 @@ class MoveStrategy;
 class Player {
 public:
     using const_iterator_t = std::vector<uint32_t>::const_iterator;
-    
+        
     Player(uint8_t _id, uint32_t _position, const_iterator_t first, const_iterator_t last, 
         MoveStrategy *_moveStrategy, GraphQuery sQuery, GraphQuery cQuery) :
             position(_position), activeTargets(first, last), 

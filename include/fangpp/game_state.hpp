@@ -29,6 +29,8 @@ public:
     
     Game(const char *boardFile, const uint8_t _nPlayers, 
         const uint8_t _nTargetsPlayer);
+    
+    void initializeState();
         
     // Run a single player move of game
     Status makeMove();
@@ -43,6 +45,8 @@ public:
     Player &getCurrentPlayer();
     
     const Player &getUserPlayer() const;
+    
+    const std::vector<Player> &getPlayers() const { return players; }
     
     bool checkIfUserTurn() const;
     

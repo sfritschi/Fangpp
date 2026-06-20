@@ -27,6 +27,7 @@ GLFWwindow *Graphics::initGL()
     glfwSetWindowUserPointer(window, this);  // allow modifying object from callback
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
+    glfwSetCursorPosCallback(window, cursorPosCallback);
     glfwSetKeyCallback(window, keyCallback);
     
     // Initialize GLEW
@@ -90,50 +91,88 @@ void Graphics::run()
         // Note: Need to animate the colors of players at same position
         circles.animateColors(glfwGetTime(), gameState.prepareCharacterPositions());
         circles.draw();
-        //text.drawAtCentered(L"Hellö", 0.25f*width, 0.25f*height, glm::vec3(0.0f, 0.0f, 0.0f), Text::CENTER_BOTH, aspect, 0.5);
-        //text.drawAtCentered(L"2", -0.25f*width, 0.25f*height, glm::vec3(0.0f, 0.0f, 0.0f), Text::CENTER_BOTH, aspect);
-        //text.drawAtCentered(L"3", -0.25f*width, -0.25f*height, glm::vec3(0.0f, 0.0f, 0.0f), Text::CENTER_BOTH, aspect);
-        //text.drawAtCentered(L"4", 0.25f*width, -0.25f*height, glm::vec3(0.0f, 0.0f, 0.0f), Text::CENTER_BOTH, aspect);
-        //text.drawAtCentered(L"This-is-a-test", -0.5f*width, 0.0f, glm::vec3(0.0f, 0.0f, 0.0f), Text::CENTER_VERTICAL);
-        
-        
+        // TODO: Move text rendering to separate function
+        // Draw HUD text describing the current state of the game
         const auto &userPlayer = gameState.getUserPlayer();
         const auto playerId = gameState.getCurrentPlayer().getId();
+        
+        glm::vec3 playerColor = playerColors[playerId];
+        if (playerId == gameState.getBoegId())
+        {
+            playerColor = playerColors[nPlayableCharacters - 1];  // color of boeg
+        }
         
         if (userPlayer.getId() == playerId)
         {
             const std::wstring diceRollMsg1 = L"You rolled a " + std::to_wstring(gameState.getDiceRoll());
-            text.drawAt(diceRollMsg1, -0.5f*width, 0.5f*height - 40.0f, playerColors[playerId], aspect);
+            text.drawAt(diceRollMsg1, -0.5f*width, 0.5f*height - 40.0f, playerColor, aspect);
         }
         else
         {
             const std::wstring diceRollMsg1 = L"Player " + std::to_wstring(playerId + 1) + L" rolled a " + std::to_wstring(gameState.getDiceRoll());
-            text.drawAt(diceRollMsg1, -0.5f*width, 0.5f*height - 40.0f, playerColors[playerId], aspect);
+            text.drawAt(diceRollMsg1, -0.5f*width, 0.5f*height - 40.0f, playerColor, aspect);
         }
         
         // Draw name of the location where the user is currently
         uint32_t vertexId = userPlayer.getPosition();
+        glm::vec3 userColor = playerColors[userPlayer.getId()];
         if (userPlayer.getId() == gameState.getBoegId())
         {
             // User is currently controlling the boeg, use boeg's location instead
             vertexId = gameState.getBoegPosition();
+            userColor = playerColors[nPlayableCharacters - 1];
         }
         const auto &vertex = gameState.getVertices()[vertexId];
         const std::wstring userPositionMsg(vertex.location.begin(), vertex.location.end());
-        text.drawAt(userPositionMsg, -0.5f*width, -0.5f*height + 20.0f, glm::vec3(0.0f), aspect);
+        text.drawAt(userPositionMsg, -0.5f*width, -0.5f*height + 20.0f, userColor, aspect);
         
-        //for (const auto &vertex : gameState.getVertices())
-        //{
-        //    const std::string &loc = vertex.location;
-        //    const std::wstring wloc (loc.begin(), loc.end());
-        //    text.drawAtCentered(wloc, vertex.xpos*width*0.5f, vertex.ypos*height*0.5f, glm::vec3(0.0f, 0.0f, 1.0f), Text::CENTER_BOTH, aspect, 0.4);
-        //}
+        // Draw the number of active targets for each player
+        GLfloat offset = 150.0f; GLfloat spacing = 5.0f;
+        const GLfloat targetTextScale = 0.75f;
+        const std::wstring msg = L"Targets left:";
+        const auto d = text.getDimensions(msg);
+        text.drawAt(msg, -0.5f*width, -offset, glm::vec3(0.0f), aspect, targetTextScale);
+        
+        offset += d.height + spacing;
+        for (const Player &player : gameState.getPlayers())
+        {
+            const uint32_t nActiveTargets = player.getActiveTargets().size();
+            const std::wstring targetMsg = L"Player " + std::to_wstring(player.getId() + 1) + L": " + std::to_wstring(nActiveTargets);
+            const auto dims = text.getDimensions(targetMsg);
+            
+            glm::vec3 color = playerColors[player.getId()];
+            if (player.isBoeg(gameState))
+            {
+                color = playerColors[nPlayableCharacters - 1];  // color of boeg
+            }
+            text.drawAt(targetMsg, -0.5f*width, -offset, color, aspect, targetTextScale);
+            
+            offset += dims.height + spacing;
+        }
         
         // Draw active targets of user
         for (const auto target : userPlayer.getActiveTargets())
         {
             const auto &vertex = gameState.getVertices()[target];
             text.drawAtCentered(L"*", vertex.xpos*width*0.5f, vertex.ypos*height*0.5f, playerColors[userPlayer.getId()], Text::CENTER_BOTH, aspect);
+        }
+        
+        if (hoverLocationIndex)
+        {
+            // TODO: It is still somewhat hard to read the location name.
+            //       Either find a better contrasting color, or implement an
+            //       outline/border color for text
+            const glm::vec3 color(64.0f / 255.0f, 54.0f / 255.0f, 43.0f / 255.0f);
+            const uint32_t location = hoverLocationIndex.value();
+            const auto &vertex = gameState.getVertices()[location];
+            const std::wstring locationMsg (vertex.location.begin(), vertex.location.end());
+            text.drawAtCentered(locationMsg, vertex.xpos*width*0.5f, vertex.ypos*height*0.5f, color, Text::CENTER_BOTH, aspect, 0.5f);
+        }
+        
+        if (gameState.isGameOver())
+        {
+            const glm::vec3 color(64.0f / 255.0f, 54.0f / 255.0f, 43.0f / 255.0f);
+            text.drawAtCentered(L"Game Over. Press 'R' to restart", 0.0f, 0.0f, color, Text::CENTER_BOTH, aspect, 1.5f);
         }
         
         glfwSwapBuffers(window);
@@ -186,7 +225,7 @@ uint32_t Graphics::getClickedVertexByIndex() const
     glfwGetCursorPos(window, &xpos, &ypos);
     
     GLint width = 0, height = 0;
-    glfwGetFramebufferSize(window, &width, &height);        
+    glfwGetFramebufferSize(window, &width, &height);
     // Map from screen coordinates to device coordinates
     // TODO: Replace this with inline function
     xpos = 2.0 * xpos / width - 1.0;
@@ -289,6 +328,26 @@ void Graphics::mouseButtonCallback(GLFWwindow *window, int button, int action, i
     }
 }
 
+void Graphics::cursorPosCallback(GLFWwindow *window, double xpos, double ypos)
+{
+    (void) xpos;  // unused
+    (void) ypos;  // unused
+    
+    auto graphics = reinterpret_cast<Graphics *>(glfwGetWindowUserPointer(window));
+    if (graphics)
+    {
+        const uint32_t vertexIndex = graphics->getClickedVertexByIndex();
+        if (vertexIndex < graphics->gameState.getNVertices())
+        {
+            graphics->hoverLocationIndex = vertexIndex;
+        }
+        else
+        {
+            graphics->hoverLocationIndex.reset();
+        }
+    }
+}
+
 void Graphics::keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     (void)scancode;  // unused
@@ -297,6 +356,18 @@ void Graphics::keyCallback(GLFWwindow *window, int key, int scancode, int action
     if ((key == GLFW_KEY_Q || key == GLFW_KEY_ESCAPE) && action == GLFW_PRESS)
     {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
+    }
+    
+    auto graphics = reinterpret_cast<Graphics *>(glfwGetWindowUserPointer(window));
+    if (graphics && graphics->gameState.isGameOver())
+    {
+        if (key == GLFW_KEY_R && action == GLFW_PRESS)
+        {
+            // Begin a new game by re-initializing the state
+            graphics->gameState.initializeState();
+            // Reset sound engine state to beginning 
+            graphics->sound.reset();
+        }
     }
 }
 

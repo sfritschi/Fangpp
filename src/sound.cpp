@@ -93,6 +93,21 @@ void Sound::update()
     ERRCHECK(system->update());
 }
 
+void Sound::reset()
+{
+    // Reset positions in respective themes to beginning
+    mainThemePosPCM = 0;
+    boegThemePosPCM = 0;
+    
+    if (isPlaying(mainChannel))
+    {
+        // Stop the currently playing theme
+        ERRCHECK(mainChannel->stop());
+    }
+    // Start playing main theme again
+    ERRCHECK(system->playSound(mainTheme, nullptr, false, &mainChannel));
+}
+
 Sound::~Sound()
 {
     // Cleanup sound system resources

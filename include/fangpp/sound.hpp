@@ -29,6 +29,8 @@ public:
     
     void update();
     
+    void reset();
+    
     ~Sound();
     
     class CooldownTimer

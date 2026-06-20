@@ -21,16 +21,25 @@ Game::Game(const char *boardFile, const uint8_t _nPlayers,
     if (stationVertices.size() == 0) {
         throw std::runtime_error("Require at least 1 non-target vertex");
     }
-    std::uniform_int_distribution<uint32_t> dist (
-        0, static_cast<uint32_t>(stationVertices.size() - 1)
-    );
+    
+    players.reserve(nPlayers);
+    
     // Seed pseudo random number generator 
     // (non-deterministically if hardware allows for it)
     //std::random_device rd;
     //prng.seed(rd());
     prng.seed(42);  // debug: use fixed seed
     
-    players.reserve(nPlayers);
+    initializeState();  // initialize board/game state using prng
+}
+
+void Game::initializeState()
+{
+    std::uniform_int_distribution<uint32_t> dist (
+        0, static_cast<uint32_t>(stationVertices.size() - 1)
+    );
+    
+    players.clear();
     
     // Shuffle targets beforehand
     std::shuffle(targetVertices.begin(), targetVertices.end(), prng);
@@ -72,7 +81,7 @@ Game::Game(const char *boardFile, const uint8_t _nPlayers,
     moveIndex = 0;
     nActivePlayers = nPlayers;
     
-    rollDice();  // initialize m_diceRoll
+    rollDice();  // initialize m_diceRoll    
 }
 
 Game::Status Game::makeMove()
