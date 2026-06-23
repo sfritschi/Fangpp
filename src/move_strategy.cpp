@@ -125,14 +125,22 @@ std::vector<uint32_t> AvoidantStrategy::moveBoeg(Game &state, Player &player,
     // Note: Assumes maximum u32 value is never used
     const uint32_t unreachable = std::numeric_limits<uint32_t>::max();
     const double infinity = std::numeric_limits<double>::infinity();
+    
     double minCost = infinity;
     uint32_t bestTarget = unreachable;
     // Define function for updating current minimum of cost function
     const auto minCostUpdate = [this, &state, &player, &targets, &minCost, &bestTarget, &candidateQuery]
         (const uint32_t candidate)
     {
+        // Reduce avoidance parameter based on fractional number of active targets.
+        // This makes the player move more greedily if they are close to finishing
+        // the game
+        const double numActiveTargets = player.getActiveTargets().size();
+        const double avoidance = m_AvoidanceBaseParam * (numActiveTargets / state.getNTargetsPlayer());
+        
         // Compute shortest paths starting from candidate position
         state.shortestPaths(candidate, candidateQuery, isBoeg);
+        
         double cost = 0.0;
         for (const uint32_t target : targets) 
         {
@@ -143,7 +151,7 @@ std::vector<uint32_t> AvoidantStrategy::moveBoeg(Game &state, Player &player,
         // Larger distance from opponent means smaller cost
         for (const uint32_t opponentPos : state.getOpponentPositions(player))
         {
-            cost += m_AvoidanceParam / candidateQuery.minDistance(opponentPos);
+            cost += avoidance / candidateQuery.minDistance(opponentPos);
         }
         // Pick reachable, unoccupied target that is closest to
         // remaining targets
@@ -154,10 +162,9 @@ std::vector<uint32_t> AvoidantStrategy::moveBoeg(Game &state, Player &player,
         }
     };
     
-    // Search for unoccupied, reachable and closest targets
+    // Search for unoccupied and reachable targets
     for (const uint32_t target : targets) 
     {
-        // Keep track of closest target that is NOT already occupied by opponent
         const uint32_t targetDistance = startQuery.minDistance(target);
         // Check if this active target is reachable and NOT already occupied by opponent
         if (diceRoll >= targetDistance && !state.isOpponentAtTarget(player, target)) 
@@ -215,8 +222,10 @@ std::vector<uint32_t> UserStrategy::moveBoeg(Game &state, Player &player,
 {
     const uint32_t start = state.getBoegPosition();
     
+    // Verify that user has at least 1 valid move 
     bool hasReachablePosition = false;
-    // Need to first verify if user has any valid moves to begin with
+    // Need to first verify if user has any valid moves using exactly
+    // diceRoll many steps
     const auto reachable = state.findAllReachableVertices(start, diceRoll, true);
     for (const uint32_t position : reachable) 
     {
@@ -225,6 +234,25 @@ std::vector<uint32_t> UserStrategy::moveBoeg(Game &state, Player &player,
         { 
             hasReachablePosition = true;
             break;  // found at least 1 reachable & valid position
+        }
+    }
+    
+    // Compute shortest paths from boeg position
+    GraphQuery &startQuery = player.getStartQuery();
+    state.shortestPaths(start, startQuery, true);
+    
+    if (!hasReachablePosition)
+    {
+        // Also need to verify that user can't reach an active & unoccupied target
+        // using < diceRoll many steps
+        for (const uint32_t target : player.getActiveTargets())
+        {
+            const uint32_t targetDistance = startQuery.minDistance(target);
+            if (diceRoll >= targetDistance && !state.isOpponentAtTarget(player, target))
+            {
+                hasReachablePosition = true;
+                break;
+            }
         }
     }
     
@@ -244,10 +272,6 @@ std::vector<uint32_t> UserStrategy::moveBoeg(Game &state, Player &player,
     {
         if (m_userClickedPosition == target)
         {
-            // Compute shortest paths from boeg position
-            GraphQuery &startQuery = player.getStartQuery();
-            state.shortestPaths(start, startQuery, true);
-        
             if (diceRoll >= startQuery.minDistance(m_userClickedPosition))
             {
                 return startQuery.followMinPath(m_userClickedPosition, diceRoll);
@@ -260,7 +284,7 @@ std::vector<uint32_t> UserStrategy::moveBoeg(Game &state, Player &player,
     }
     
     // Return a valid simple path ending at clicked position if one exists
-    return state.findPathOfLength(state.getBoegPosition(), m_userClickedPosition, diceRoll, true);
+    return state.findPathOfLength(start, m_userClickedPosition, diceRoll, true);
 }
 
 std::vector<uint32_t> UserStrategy::movePlayer(Game &state, Player &player,

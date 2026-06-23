@@ -58,6 +58,8 @@ public:
     
     uint32_t getDiceRoll() const { return m_diceRoll; }
     
+    uint8_t getNTargetsPlayer() const { return nTargetsPlayer; }
+    
     uint32_t getCurrentPlayerNumTargets() const;
     
     void setUserClickedPosition(const uint32_t pos);

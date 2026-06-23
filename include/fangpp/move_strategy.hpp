@@ -52,7 +52,7 @@ public:
     virtual std::vector<uint32_t> movePlayer(Game &state, Player &player, const uint32_t diceRoll) const override;
 
 private:
-    double m_AvoidanceParam = 40.0;
+    double m_AvoidanceBaseParam = 40.0;  // base avoidance factor at the beginning of the game
 };
 
 // User decides what move to make
