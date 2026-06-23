@@ -122,6 +122,12 @@ std::vector<uint32_t> AvoidantStrategy::moveBoeg(Game &state, Player &player,
     // Compute shortest paths from start as Boeg
     state.shortestPaths(start, startQuery, isBoeg);
     
+    // Reduce avoidance parameter based on fractional number of active targets.
+    // This makes the player move more greedily if they are close to finishing
+    // the game
+    const double numActiveTargets = player.getActiveTargets().size();
+    const double avoidance = m_AvoidanceBaseParam * (numActiveTargets / state.getNTargetsPlayer());
+        
     // Note: Assumes maximum u32 value is never used
     const uint32_t unreachable = std::numeric_limits<uint32_t>::max();
     const double infinity = std::numeric_limits<double>::infinity();
@@ -129,15 +135,9 @@ std::vector<uint32_t> AvoidantStrategy::moveBoeg(Game &state, Player &player,
     double minCost = infinity;
     uint32_t bestTarget = unreachable;
     // Define function for updating current minimum of cost function
-    const auto minCostUpdate = [this, &state, &player, &targets, &minCost, &bestTarget, &candidateQuery]
+    const auto minCostUpdate = [&state, &player, &targets, &minCost, &bestTarget, &candidateQuery, &avoidance]
         (const uint32_t candidate)
     {
-        // Reduce avoidance parameter based on fractional number of active targets.
-        // This makes the player move more greedily if they are close to finishing
-        // the game
-        const double numActiveTargets = player.getActiveTargets().size();
-        const double avoidance = m_AvoidanceBaseParam * (numActiveTargets / state.getNTargetsPlayer());
-        
         // Compute shortest paths starting from candidate position
         state.shortestPaths(candidate, candidateQuery, isBoeg);
         
@@ -183,6 +183,7 @@ std::vector<uint32_t> AvoidantStrategy::moveBoeg(Game &state, Player &player,
     // that minimizes the cost function
     minCost = infinity;
     bestTarget = unreachable;
+    
     const auto reachable = state.findAllReachableVertices(start, diceRoll, isBoeg);
     for (const uint32_t position : reachable) 
     {
