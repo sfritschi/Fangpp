@@ -53,7 +53,7 @@ private:
     std::optional<uint32_t> hoverLocationIndex;
     
     // Default (initial) resolution of window
-    static constexpr const GLint defaultWidth  = 1200;
+    static constexpr const GLint defaultWidth  = 1000;
     static constexpr const GLint defaultHeight = 1000;
     static constexpr const uint32_t nPlayableCharacters = 7;
     

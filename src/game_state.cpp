@@ -58,7 +58,7 @@ void Game::initializeState()
         }
         else
         {
-            strategy = new GreedyStrategy;
+            strategy = new AvoidantStrategy;
         }
         
         players.emplace_back(

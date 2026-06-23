@@ -172,7 +172,7 @@ void Graphics::run()
         if (gameState.isGameOver())
         {
             const glm::vec3 color(64.0f / 255.0f, 54.0f / 255.0f, 43.0f / 255.0f);
-            text.drawAtCentered(L"Game Over. Press 'R' to restart", 0.0f, 0.0f, color, Text::CENTER_BOTH, aspect, 1.5f);
+            text.drawAtCentered(L"Game Over! Press 'R' to restart", 0.0f, 0.0f, color, Text::CENTER_BOTH, aspect, 1.5f);
         }
         
         glfwSwapBuffers(window);

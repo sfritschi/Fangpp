@@ -257,8 +257,10 @@ void Text::drawAtCentered(const std::wstring &text, GLfloat cx, GLfloat cy,
     // Compute dimensions of text
     Dimensions dims = getDimensions(text, scale);
     // Render text s.t. bounding box center coincides with (cx, cy)
-    // NOTE: Need to multiply width with aspect ratio to preserve it
+    // NOTE: Need to multiply both width and xmin position with aspect ratio
+    //       in order to preserve them
     dims.width *= aspect;
+    dims.xmin *= aspect;
     
     GLfloat x, y;
     switch (type)

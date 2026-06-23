@@ -50,6 +50,9 @@ class AvoidantStrategy : public MoveStrategy {
 public:
     virtual std::vector<uint32_t> moveBoeg(Game &state, Player &player, const uint32_t diceRoll) const override;
     virtual std::vector<uint32_t> movePlayer(Game &state, Player &player, const uint32_t diceRoll) const override;
+
+private:
+    double m_AvoidanceParam = 40.0;
 };
 
 // User decides what move to make
